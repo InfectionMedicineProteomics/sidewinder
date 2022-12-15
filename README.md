@@ -8,4 +8,4 @@ Requires snakemake>=6.0
 
 ## References
 
-- *TX-MS:* https://www.nature.com/articles/s41467-018-07986-1
+- **TX-MS:** https://www.nature.com/articles/s41467-018-07986-1
