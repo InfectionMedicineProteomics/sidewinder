@@ -30,6 +30,14 @@ def kojak_generator(sequence: str, pos: int) -> Tuple[list, int]:
 
     Originally authored by Hamed Khakzad (Fri Dec  2 14:37:17 2016),
     and edited and commented by Joel Ströbaek (Nov 2022).
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+
     """
 
     xlink = []
@@ -83,7 +91,17 @@ def kojak_format(pep_1: str,
                  pep_2: str,
                  k_pos_2: int,
                  swap_order: bool = False) -> str:
-    """Return kojak formatted string.
+    """Generate Kojak formatted string.
+
+    ...
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+    str
     """
 
     if swap_order:
@@ -119,6 +137,14 @@ def seq2xl(seq_file1: Path, seq_file2: Path, output_dir: Path) -> Path:
     """Generate all inter-XLs between 2 input aa-seqs.
 
     Heavily based on code authored by Hamed Khakzad.
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+
     """
 
     pep_len = 4

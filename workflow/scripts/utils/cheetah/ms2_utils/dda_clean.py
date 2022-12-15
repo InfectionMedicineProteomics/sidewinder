@@ -8,11 +8,15 @@ from mgf_utils import fragment_generator
 def mgf_writer(mgf_output_file: Path, spectra: dict):
     """Write MGF file.
 
-    Keyword inputs:
-    mgf_output_file -- output file path
-    spectra -- MGF spectra dict
+    ...
 
     Originally authored by Hamed Khakzad, edited by Joel Ströbaek.
+
+    ...
+
+    Parameters
+    ----------
+
     """
 
     title = str(spectra['params']['title'])
@@ -43,17 +47,28 @@ def mgf_writer(mgf_output_file: Path, spectra: dict):
 
 def DDA_clean(xl_file: Path,
               mgf_file: Path,
-              precursor_delta: float, xlinker_mass: int, ptm_type: str):
+              precursor_delta: float, xlinker_mass: int, ptm_type: str) -> Path:
     """Clean DDA MGF file.
 
-    Keyword inputs:
-    xl_file -- ...
-    mgf_file -- ...
-    precursor_delta -- ...
-    xlinker_type -- ...
-    ptm_type -- ...
-
     Originally authored by Hamed Khakzad, edited by Joel Ströbaek.
+
+    ...
+
+    Parameters
+    ----------
+    xl_file : pathlib.Path object
+        Path to Kojak formatted TXT with cross-links.
+    mgf_file : pathlib.Path object
+        Path to MGF with MS2 data.
+    precursor_delta : float
+    xlinker_mass : int
+    ptm_type : str
+        Valid input {'1'..'12'}.
+
+    Returns
+    -------
+    pathlib.Path object
+        Path to cleaned MGF file.
     """
 
     # Read the MGF (MS/MS) file.

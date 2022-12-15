@@ -31,12 +31,11 @@ def run_megadock(receptor: Path,
                  ligand: Path, output_dir: Path, n_out: int) -> Path:
     """Dock two proteins using a containerized MEGADOCK 4.
 
-    Keyword arguments:
-    receptor -- ...
-    ligand -- ...
-    output_dir -- desired output directory
+    ...
 
-    Returns: output path
+    Parameters
+    ----------
+
     """
 
     # Assign container internal paths:

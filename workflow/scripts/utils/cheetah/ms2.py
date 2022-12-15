@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+"""Cheetah-MS MS2 analysis.
 """
 
 __author__ = 'Joel Ströbaek'
@@ -24,6 +24,14 @@ def taxlink(xl_file: Path,
             mgf_file: Path,
             delta: float,
             intensity_filter: float, xlinker_type: int, ptm_type: str) -> Path:
+    """...
+
+    ...
+
+    Parameters
+    ----------
+
+    """
 
     # Disuccinimidyl suberate:
     DSS_mass = 138.06808  # mass.calculate_mass(formula='C16H20N2O8')
@@ -60,7 +68,14 @@ def taxlink(xl_file: Path,
               required=True,
               type=click.Path(exists=True, path_type=Path), help='')
 def run_ms2_analysis(mgf_file: Path, xl_file: Path, output_dir: Path) -> Path:
+    """...
 
+    ...
+
+    Parameters
+    ----------
+
+    """
     delta = 0.01  # 0.01 or 0.05.
 
     intensity = 0.0

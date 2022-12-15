@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+"""
+
 
 from glob import glob
 from pathlib import Path
@@ -65,14 +68,20 @@ from utils import file_handling
     default=3,
     help=''
 )
-def main(
-    input_models_dir,
-    output_dir,
-    top_xl_file,
-    cutoff,
-    partner_chains,
-    n_top_models
-):
+def main(input_models_dir,
+         output_dir, top_xl_file, cutoff, partner_chains, n_top_models):
+    """...
+
+    ...
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+
+    """
 
     init()  # Initiates Rosetta.
 

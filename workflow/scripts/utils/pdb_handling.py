@@ -22,6 +22,17 @@ import click
 
 def parse_pdb(pdb: Path, structure_id: str) -> Structure.Structure:
     """Get structure from specified PDB file.
+
+    ...
+
+    Parameters
+    ----------
+    pdb : pathlib.Path
+    structure_id : str
+
+    Returns
+    -------
+    Bio.PDB.Structure.Structure object
     """
 
     pdb_parser = PDBParser(QUIET=True)
@@ -30,6 +41,16 @@ def parse_pdb(pdb: Path, structure_id: str) -> Structure.Structure:
 
 def seq_from_structure(structure: Structure.Structure) -> str:
     """Get sequence from structure object.
+
+    ...
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+
     """
 
     pp_builder = PPBuilder()
@@ -46,6 +67,16 @@ def seq_from_structure(structure: Structure.Structure) -> str:
 
 def close_pipes(pipes: list) -> None:
     """Close each listed pipe.
+
+    ...
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+
     """
 
     for p in pipes:
@@ -75,7 +106,17 @@ def close_pipes(pipes: list) -> None:
 )
 def cheetah_pdb_format(pdb1: Path,
     pdb2: Path, output_dir: Path) -> Tuple[Path, Path, Path]:
-    """
+    """...
+
+    ...
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+
     """
 
     chains = ('A', 'B')
