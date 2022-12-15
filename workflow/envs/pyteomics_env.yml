@@ -1,0 +1,8 @@
+name: pyteomics
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - pyteomics
+  - click
+  - pandas

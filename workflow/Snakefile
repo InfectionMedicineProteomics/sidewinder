@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""
+"""
+
+__author__ = 'Joel Ströbaek'
+__email__ = 'joel.strobaek@gmail.com'
+
+
+# TODO:
+# - Remove ms2 parameter hard coding!
+
+
+from pathlib import Path
+
+from snakemake.utils import min_version
+
+
+min_version("6.0")  # Min version for using modules.
+
+configfile: "config/config.yml"
+
+
+# Convert config paths from string to Path objects.
+config_paths = ['output_dir', 'input_pdb1', 'input_pdb2', 'input_ms2']
+config = {k: (v if k not in config_paths else Path(v).resolve()) for k, v in config.items()}
+
+OUTDIR = config['output_dir']
+
+MSCONVERT_CMD = (f'cp {{input.ms2}} {{output.mgf}}'
+                 if (config['input_ms2'].suffix.lower() in '.mgf')
+                 else f'msconvert {{input.ms2}} --mgf -o {{params.outdir}}')
+
+
+rule all:
+    # TODO: add in proper wildcards!
+    #
+    input:
+        dock = OUTDIR / 'model_A-model_B.out',
+        xls = OUTDIR / 'all_xls.txt',
+        mgf = OUTDIR / 'ms2_convert' / f'{config["input_ms2"].stem}.mgf'
+
+rule pdb_handling:
+    input:
+        PDB_a = config['input_pdb1'],
+        PDB_b = config['input_pdb2']
+    output:
+        PDB = OUTDIR / 'complex_AB.pdb',
+        seq_a = OUTDIR / 'seq_A.txt',
+        seq_b = OUTDIR / 'seq_B.txt',
+        mod_a = OUTDIR / 'model_A.pdb',
+        mod_b = OUTDIR / 'model_B.pdb'
+    params:
+        pdb_handling = 'workflow/scripts/utils/pdb_handling.py'
+    conda:
+        'envs/biopython_env.yml'
+    shell:
+        "python3 {params.pdb_handling} "
+        "--pdb1 {input.PDB_a} "
+        "--pdb2 {input.PDB_b} "
+        "--output_dir {OUTDIR}"
+
+rule seq2xl:
+    input:
+        seq_a = rules.pdb_handling.output.seq_a,
+        seq_b = rules.pdb_handling.output.seq_b
+    output:
+        rules.all.input.xls
+    params:
+        seq2xl = 'workflow/scripts/utils/cheetah/seq2xl.py'
+    conda:
+        'envs/biopython_env.yml'
+    shell:
+        "python3 {params.seq2xl} "
+        "--seq_file1 {input.seq_a} "
+        "--seq_file2 {input.seq_b} "
+        "--output_dir {OUTDIR}"
+
+rule megadock:
+    # TODO: re-write to use native docker support instead of the python SDK...
+    #
+    input:
+        mod_a = rules.pdb_handling.output.mod_a,
+        mod_b = rules.pdb_handling.output.mod_b
+    output:
+        rules.all.input.dock
+    params:
+        megadock = 'workflow/scripts/utils/cheetah/megadock.py'
+    conda:
+        'envs/docker_env.yml'
+    shell:
+        "python3  {params.megadock} "
+        "--receptor {input.mod_a} "
+        "--ligand {input.mod_b} "
+        "--output_dir {OUTDIR} "
+        "--n_out 1000"
+
+rule msconvert:
+    input:
+        ms2 = config['input_ms2']
+    output:
+        mgf = rules.all.input.mgf
+    params:
+        outdir = OUTDIR / 'ms2_convert',
+    conda:
+        'envs/proteowizard_env.yml'
+    shell:
+        MSCONVERT_CMD
+
+rule ms2:
+    input:
+        mgf = rules.msconvert.output.mgf
+        xls = rules.seq2xl.output
+    output:
+        sql = OUTDIR / 'ms2_results.sql'
+        xls = OUTDIR / 'top_xls.txt'
+    params:
+        ms2 = 'workflow/scripts/utils/cheetah/ms2.py'
+    conda:
+        'envs/pyteomics_env.yml'
+    shell:
+        "python3 {params.ms2} "
+        "--mgf_file {input.mgf} "
+        "--xl_file {input.xls} "
+        "--output_dir {OUTPUT}"
+
+# rule modeling:
+
+# rule visualization:

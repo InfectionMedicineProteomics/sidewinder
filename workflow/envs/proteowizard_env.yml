@@ -1,0 +1,5 @@
+name: pwiz
+channels:
+  - bioconda
+dependencies:
+  - proteowizard

@@ -1,0 +1,7 @@
+name: docker
+channels:
+  - conda-forge
+dependencies:
+  - click
+  - pip:
+    - docker
