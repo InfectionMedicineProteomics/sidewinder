@@ -1,0 +1,14 @@
+# User configurable options:
+
+# Default output_dir: 'results/{date}'
+output_dir: '/srv/data1/home/jo0348st/projects/sidewinder_dev/results'
+
+input_pdb1: '/srv/data1/home/jo0348st/data/sidewinder_dev/uhD4YUPj6ImEQJi/pdb2.pdb'
+input_pdb2: '/srv/data1/home/jo0348st/data/sidewinder_dev/uhD4YUPj6ImEQJi/pdb1.pdb'
+
+input_ms2: '/srv/data1/home/jo0348st/data/sidewinder_dev/uhD4YUPj6ImEQJi/ms2.mgf'
+
+distance_cut_off: 30  # In Ångström
+num_of_top_filters: 2
+
+# Static configuration (not user specified):
