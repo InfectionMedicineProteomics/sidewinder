@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 from pyteomics import mgf
 
@@ -45,7 +46,7 @@ def mgf_writer(mgf_output_file: Path, spectra: dict):
 
         print('END IONS\n', file=f)
 
-def DDA_clean(xl_file: Path,
+def DDA_clean(xl_list: List[str],
               mgf_file: Path,
               precursor_delta: float, xlinker_mass: int, ptm_type: str) -> Path:
     """Clean DDA MGF file.
@@ -56,8 +57,8 @@ def DDA_clean(xl_file: Path,
 
     Parameters
     ----------
-    xl_file : pathlib.Path object
-        Path to Kojak formatted TXT with cross-links.
+    xl_list : list of strings
+        List strings with Kojak formatted cross-links.
     mgf_file : pathlib.Path object
         Path to MGF with MS2 data.
     precursor_delta : float
@@ -71,28 +72,16 @@ def DDA_clean(xl_file: Path,
         Path to cleaned MGF file.
     """
 
+    xls = xl_list
+
     # Read the MGF (MS/MS) file.
     mgf_dict_list = list(mgf.read(mgf_file))
 
-    # Importing top_XLs file.
-    with open(xl_file, 'r') as f:
+    output_file = mgf_file.parent / f'{mgf_file.stem}_cleaned.mgf'
 
-        xls = f.read().splitlines()  # Each rows as one element of the list.
-
-    output_file_name = mgf_file.parent / f'{mgf_file.stem}_cleaned.mgf'
-
-    with open(output_file_name, 'w') as f:
+    with open(output_file, 'w') as f:
 
         for num_xl, xl in enumerate(xls):
-
-            print(num_xl, xl)
-
-            p1 = ""
-            p2 = ""
-            fragment_all = []
-            mz_light_all = []
-            mz_heavy_all = []
-            precursor_dict = {}
 
             (precursor_dict,
              fragment_all,
@@ -142,4 +131,4 @@ def DDA_clean(xl_file: Path,
 
                         raise error
 
-    return output_file_name
+    return output_file

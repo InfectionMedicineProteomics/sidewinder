@@ -38,7 +38,7 @@ def fragments(peptide: str, charge: int):
 
             pep_mass = mass.fast_mass(ion_pep, ion_type=ion, charge=charge)
 
-            # Adding Carbamidomethylation for Cys residues:
+            # Adding carbamidomethylation for Cys residues:
             if "C" in peptide:
 
                 pep_mass += 57.021464 * ion_pep.count("C")
