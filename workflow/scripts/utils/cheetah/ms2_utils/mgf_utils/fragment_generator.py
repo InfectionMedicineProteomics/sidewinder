@@ -119,7 +119,7 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str):
     #comb_frag2 = []
 
     peptide_1, peptide_2 = [peptide.strip('-.(0123456789)')
-                            for peptide in xl[0].split('--')]
+                            for peptide in xl.split('--')]
 
     p1_k_pos = peptide_1.find('K')
 
@@ -133,7 +133,7 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str):
 
     p2_ptms = calc_ptm_mass(ptm_type, peptide_2)
 
-    # for filtering spectra based on comparison of mass of XL and the precursor mass
+    # Filtering spectra based on mass comparison for XL and the precursor mass
     precursor_dict = {}
 
     precursor_frag_list = []
@@ -222,10 +222,12 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str):
 
                 #comb_frag1.append(frag1)
 
-                tmp_comb_mz = f1_mass - 18.010565 + xlinker_mass + p2_mass
-                #comb_mz = comb_mz + (57.021464*(frag1.count("C")+peptide_2.count("C")))
-
-                tmp_comb_mz = comb_mz + f1_ptms + p2_ptms
+                tmp_comb_mz = (f1_mass
+                               - 18.010565
+                               + xlinker_mass + p2_mass + f1_ptms + p2_ptms)
+                #comb_mz = comb_mz + (57.021464
+                #                     * (frag1.count("C")
+                #                        + peptide_2.count("C")))
 
                 comb_mz = (tmp_comb_mz + (charge * h_mass))/charge
 
@@ -255,10 +257,12 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str):
 
                 #comb_frag2.append(frag2)
 
-                tmp_comb_mz = f2_mass - 18.010565 + xlinker_mass + p1_mass
-                #comb_mz = comb_mz + (57.021464*(frag2.count("C")+peptide_1.count("C")))
-
-                tmp_comb_mz = comb_mz + f2_ptms + p1_ptms
+                tmp_comb_mz = (f2_mass
+                               - 18.010565
+                               + xlinker_mass + p1_mass + f2_ptms + p1_ptms)
+                #comb_mz = comb_mz + (57.021464
+                #                     * (frag2.count("C")
+                #                        + peptide_1.count("C")))
 
                 comb_mz = (tmp_comb_mz + (charge * h_mass))/charge
 

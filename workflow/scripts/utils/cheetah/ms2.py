@@ -8,6 +8,7 @@ __email__ = 'joel.strobaek@gmail.com'
 
 # TODO:
 # - Remove hardcoded default parameters (delta, intensity, ptm, xlinker)
+# - Clean up the taxlink function
 
 
 import sqlite3
@@ -69,7 +70,9 @@ def taxlink(all_xls_file: Path,
                                            xlinker_mass, ptm_type)
 
     # Build SQLite3 database.
-    con = sqlite3.connect('MS2_results.db')
+    sql_db_file = output_dir / 'ms2_results.sql'
+
+    con = sqlite3.connect(sql_db_file)
 
     c = con.cursor()
 
@@ -85,7 +88,7 @@ def taxlink(all_xls_file: Path,
     c.execute('PRAGMA synchronous = NORMAL')
 
     # Read in cleaned MGF file.
-    mgf_dict_list = list(mgf.read(cleaned_mgf_file))
+    mgf_dict_list = list(mgf.read(str(cleaned_mgf_file)))
 
     output_file = output_dir / 'detected_spectra.txt'
 
@@ -274,7 +277,7 @@ def taxlink(all_xls_file: Path,
                             delta, pre_charge, H_L, fragSc, coverage, covered_Frags, covered_Mz, covered_int, \
                             main_Mz, main_int, count) VALUES \
                             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" \
-                            ,(xl, top_XL_file, spectrum_id, spectrum_num, delta, spec_charge, heavy_light_flag, \
+                            ,(xl, str(all_xls_file), spectrum_id, spectrum_num, delta, spec_charge, heavy_light_flag, \
                             max(mgf_spec_score), coverage, ",".join(str(x) for x in covered_Frags), \
                             ",".join(str(w) for w in covered_mz), ",".join(str(x) for x in covered_intensity), \
                             ",".join(str(x) for x in main_spectra), ",".join(str(x) for x in main_intensity), \
@@ -284,12 +287,17 @@ def taxlink(all_xls_file: Path,
 
                         if len(covered_mz) >= fig_threshold:
 
-                            fig_maker(main_spectra,
-                                      main_intensity,
-                                      covered_Frags,
-                                      covered_mz, p1, p2, xl, num_mgf, delta)
+                            fig_maker.fig_maker(main_spectra,
+                                                main_intensity,
+                                                covered_Frags,
+                                                covered_mz,
+                                                p1,
+                                                p2,
+                                                xl, num_mgf, delta, output_dir)
 
     con.close()
+
+    return sql_db_file
 
 @click.command()
 @click.version_option(version='1.0a')
@@ -319,19 +327,22 @@ def run_ms2_analysis(mgf_file: Path, xl_file: Path, output_dir: Path) -> Path:
 
     ptm = "1"
 
-    taxlink(all_xls_file=xl_file,
-            mgf_file=mgf_file,
-            output_dir=output_dir,
-            delta=delta,
-            intensity_filter=intensity, xlinker_type=x_linker, ptm_type=ptm)
+    sql_db_path = taxlink(all_xls_file=xl_file,
+                          mgf_file=mgf_file,
+                          output_dir=output_dir,
+                          delta=delta,
+                          intensity_filter=intensity,
+                          xlinker_type=x_linker, ptm_type=ptm)
 
-    engine = create_engine('sqlite:///ms2_results.sql')
+    engine = create_engine(f'sqlite:///{str(sql_db_path)}')
 
     query = 'SELECT DISTINCT XL FROM MS2Data WHERE count>10 ORDER BY count DESC'
 
     ms2_xls_df = pandas.read_sql_query(query, engine)
 
-    with open('top_xls.txt', 'w') as f:
+    top_xls_file = output_dir / 'top_xls.txt'
+
+    with open(top_xls_file, 'w') as f:
 
         f.write(ms2_xls_df.to_csv(sep=' ', index=False, header=False))
 

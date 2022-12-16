@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 def fig_maker(main_spectra,
               main_intensity,
               covered_frags,
-              covered_mz, peptide1, peptide2, xl, num_mgf, delta):
+              covered_mz,
+              peptide1, peptide2, xl, num_mgf, delta, output_dir):
     """
     """
 
@@ -129,22 +130,22 @@ def fig_maker(main_spectra,
                  horizontalalignment='center',
                  verticalalignment='bottom', color='green')
 
-    print ("************RESULT SECTION**************")
+    # print ("************RESULT SECTION**************")
 
-    print ("covered_frags_list:\n", covered_frags)
+    # print ("covered_frags_list:\n", covered_frags)
 
-    print ("covered_mz_list:\n", covered_mz)
+    # print ("covered_mz_list:\n", covered_mz)
 
-    print ("hypo_intensity_list:\n", plot_intensity_list)
+    # print ("hypo_intensity_list:\n", plot_intensity_list)
 
-    print ("Storing figure: ", str(num_mgf)+xl+".png")
+    # print ("Storing figure: ", str(num_mgf)+xl+".png")
 
-    spec_dir = "Top_MSMS_spectra"
+    spec_dir = output_dir / 'top_spectra'
 
-    if not os.path.exists(spec_dir):
+    spec_dir.mkdir(parents=True, exist_ok=True)
 
-        os.makedirs(spec_dir)
+    spec_image_file = spec_dir / f'{num_mgf}{xl}.png'
 
-    plt.savefig(spec_dir+"/"+str(num_mgf)+xl+".png", format='png', dpi=600)
+    plt.savefig(spec_image_file, format='png', dpi=600)
 
     plt.close()

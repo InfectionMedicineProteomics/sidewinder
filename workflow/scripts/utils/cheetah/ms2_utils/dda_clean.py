@@ -3,7 +3,7 @@ from typing import List
 
 from pyteomics import mgf
 
-from mgf_utils import fragment_generator
+from .mgf_utils import fragment_generator
 
 
 def mgf_writer(mgf_output_file: Path, spectra: dict):
@@ -20,6 +20,8 @@ def mgf_writer(mgf_output_file: Path, spectra: dict):
 
     """
 
+    f = mgf_output_file
+
     title = str(spectra['params']['title'])
 
     pepmass = str(spectra['params']['pepmass'][0])
@@ -28,23 +30,21 @@ def mgf_writer(mgf_output_file: Path, spectra: dict):
 
     charge = (str(spectra["params"]["charge"][0])).replace("+", "")
 
-    with mgf_output_file as f:
+    print('BEGIN IONS',
+            f'TITLE={title}',
+            f'PEPMASS={pepmass}',
+            f'RTINSECONDS={rtinseconds}',
+            f'CHARGE={charge}', sep='\n', file=f)
 
-        print('BEGIN IONS',
-              f'TITLE={title}',
-              f'PEPMASS={pepmass}',
-              f'RTINSECONDS={rtinseconds}',
-              f'CHARGE={charge}', sep='\n', file=f)
+    for i in range(len(spectra['m/z array'])):
 
-        for i in range(len(spectra['m/z array'])):
+        mz = str(spectra["m/z array"][i])
 
-            mz = str(spectra["m/z array"][i])
+        intensity = str(spectra["intensity array"][i])
 
-            intensity = str(spectra["intensity array"][i])
+        print(f'{mz}', f'{intensity}', sep=' ', file=f)
 
-            print(f'{mz}', f'{intensity}', sep=' ', file=f)
-
-        print('END IONS\n', file=f)
+    print('END IONS\n', file=f)
 
 def DDA_clean(xl_list: List[str],
               mgf_file: Path,
@@ -75,7 +75,7 @@ def DDA_clean(xl_list: List[str],
     xls = xl_list
 
     # Read the MGF (MS/MS) file.
-    mgf_dict_list = list(mgf.read(mgf_file))
+    mgf_dict_list = list(mgf.read(str(mgf_file)))
 
     output_file = mgf_file.parent / f'{mgf_file.stem}_cleaned.mgf'
 
@@ -86,8 +86,10 @@ def DDA_clean(xl_list: List[str],
             (precursor_dict,
              fragment_all,
              mz_light_all,
-             mz_heavy_all, p1, p2) = fragment_generator(xl,
-                                                        xlinker_mass, ptm_type)
+             mz_heavy_all,
+             p1, p2) = fragment_generator.fragment_generator(xl,
+                                                             xlinker_mass,
+                                                             ptm_type)
 
             for spectra in mgf_dict_list:  # Removed enumeration.
 

@@ -8,6 +8,7 @@ __email__ = 'joel.strobaek@gmail.com'
 
 # TODO:
 # - Remove ms2 parameter hard coding!
+#       - Set optional click input params with defaults
 
 
 from pathlib import Path
@@ -35,9 +36,12 @@ rule all:
     # TODO: add in proper wildcards!
     #
     input:
-        dock = OUTDIR / 'model_A-model_B.out',
+        dck = OUTDIR / 'model_A-model_B.out',
         xls = OUTDIR / 'all_xls.txt',
-        mgf = OUTDIR / 'ms2_convert' / f'{config["input_ms2"].stem}.mgf'
+        mgf = OUTDIR / 'ms2_convert' / f'{config["input_ms2"].stem}.mgf',
+        top = OUTDIR / 'top_xls.txt',
+        sql = OUTDIR / 'ms2_results.sql',
+        img_dir = OUTDIR / 'top_spectra'
 
 rule pdb_handling:
     input:
@@ -82,7 +86,7 @@ rule megadock:
         mod_a = rules.pdb_handling.output.mod_a,
         mod_b = rules.pdb_handling.output.mod_b
     output:
-        rules.all.input.dock
+        rules.all.input.dck
     params:
         megadock = 'workflow/scripts/utils/cheetah/megadock.py'
     conda:
@@ -104,24 +108,27 @@ rule msconvert:
     conda:
         'envs/proteowizard_env.yml'
     shell:
-        MSCONVERT_CMD
+        MSCONVERT_CMD  # Adjust shell command based on file suffix:
+                       #    - if not '.mgf': convert
+                       #    - if '.mgf': copy existing file to outdir
 
 rule ms2:
     input:
-        mgf = rules.msconvert.output.mgf
+        mgf = rules.msconvert.output.mgf,
         xls = rules.seq2xl.output
     output:
-        sql = OUTDIR / 'ms2_results.sql'
-        xls = OUTDIR / 'top_xls.txt'
+        sql = rules.all.input.sql,
+        img_dir = directory(rules.all.input.img_dir),
+        top_xls = rules.all.input.top
     params:
-        ms2 = 'workflow/scripts/utils/cheetah/ms2.py'
+        ms2_script = 'workflow/scripts/utils/cheetah/ms2.py'
     conda:
         'envs/pyteomics_env.yml'
     shell:
-        "python3 {params.ms2} "
+        "python3 {params.ms2_script} "
         "--mgf_file {input.mgf} "
         "--xl_file {input.xls} "
-        "--output_dir {OUTPUT}"
+        "--output_dir {OUTDIR}"
 
 # rule modeling:
 
