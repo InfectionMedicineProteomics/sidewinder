@@ -37,11 +37,12 @@ rule all:
     #
     input:
         dck = OUTDIR / 'model_A-model_B.out',
-        xls = OUTDIR / 'all_xls.txt',
         mgf = OUTDIR / 'ms2_convert' / f'{config["input_ms2"].stem}.mgf',
-        top = OUTDIR / 'top_xls.txt',
         sql = OUTDIR / 'ms2_results.sql',
-        img_dir = OUTDIR / 'top_spectra'
+        img_dir = OUTDIR / 'top_spectra',
+        top_xls = OUTDIR / 'top_xls.txt',
+        top_model = OUTDIR / 'best_model.pdb',
+        top_model_xls = OUTDIR / 'best_model_xl.txt'
 
 rule pdb_handling:
     input:
@@ -68,7 +69,7 @@ rule seq2xl:
         seq_a = rules.pdb_handling.output.seq_a,
         seq_b = rules.pdb_handling.output.seq_b
     output:
-        rules.all.input.xls
+        OUTDIR / 'all_xls.txt'
     params:
         seq2xl = 'workflow/scripts/utils/cheetah/seq2xl.py'
     conda:
@@ -90,7 +91,7 @@ rule megadock:
     params:
         megadock = 'workflow/scripts/utils/cheetah/megadock.py'
     conda:
-        'envs/docker_env.yml'
+        'envs/biopython_env.yml'
     shell:
         "python3  {params.megadock} "
         "--receptor {input.mod_a} "
@@ -119,7 +120,7 @@ rule ms2:
     output:
         sql = rules.all.input.sql,
         img_dir = directory(rules.all.input.img_dir),
-        top_xls = rules.all.input.top
+        top_xls = rules.all.input.top_xls
     params:
         ms2_script = 'workflow/scripts/utils/cheetah/ms2.py'
     conda:
@@ -130,6 +131,23 @@ rule ms2:
         "--xl_file {input.xls} "
         "--output_dir {OUTDIR}"
 
-# rule modeling:
+rule modeling:
+    input:
+        PDB = rules.pdb_handling.output.PDB,
+        top_xls = rules.ms2.output.top_xls
+    output:
+        top_model = rules.all.input.top_model,
+        top_model_xls = rules.all.input.top_model_xls
+    params:
+        cut_off = config['distance_cut_off'],
+        n_top_f = config['num_of_top_filters'],
+        modeling_script = 'workflow/scripts/hamed_model.py'
+    conda:
+        'envs/biopython_env.yml'
+    shell:
+        "python3 {params.modeling_script} "
+        "--complex_pdb {input.PDB} "
+        "--output_dir {OUTDIR} "
+        "--top_xls {input.top_xls}"
 
 # rule visualization:
