@@ -6,10 +6,10 @@ __author__ = 'Joel Ströbaek'
 __email__ = 'joel.strobaek@gmail.com'
 
 
-import docker
 from os import getuid
 from pathlib import Path
 
+import docker
 import click
 
 @click.command()
@@ -47,7 +47,7 @@ def run_megadock(receptor: Path,
 
     c_docked_out = c_data_path / f'{receptor.stem}-{ligand.stem}.out'
 
-    # Build input command.
+    # Build container shell command.
     megadock_command = ['megadock-gpu',
                         f'-R {c_receptor}',
                         f'-L {c_ligand}',
@@ -60,15 +60,18 @@ def run_megadock(receptor: Path,
     # Get current user ID.
     user_id = getuid()
 
-    # Run MEGADOCK container.
-    run = client.containers.run(image="akiyamalab/megadock:gpu-4.1.3",
-                          command=' '.join(megadock_command),
-                          auto_remove=True,
-                          runtime='nvidia',
-                          user=user_id,
-                          volumes={output_dir: {'bind': '/opt/MEGADOCK/data',
-                                                'mode': 'rw'}})
+    # Set MEGADOCK container run command:
+    run = client.containers.run(image="akiyamalab/megadock:gpu-4.1.4",
+                                command=' '.join(megadock_command),
+                                auto_remove=True,
+                                runtime='nvidia',
+                                user=user_id,
+                                volumes={output_dir: {'bind':
+                                                      '/opt/MEGADOCK/data',
+                                                      'mode':
+                                                      'rw'}})
 
+    # Run MEGADOCK container and write STDOUT to log:
     with open(output_dir / 'log', 'w') as f:
 
         print(run.decode(encoding='utf8'), file=f)

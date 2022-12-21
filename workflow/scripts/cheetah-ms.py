@@ -157,7 +157,7 @@ def main(input_models_dir,
 
                 Path(f).unlink()
 
-        out_all_name = output_dir.joinpath(f'{pdb_name}_all_XLs.txt')
+        out_all_name = output_dir.joinpath(f'{pdb_name}_all_xls.txt')
 
         out_all_xls_list.append(str(out_all_name))
 
@@ -171,7 +171,7 @@ def main(input_models_dir,
 
         rosettaxl.rosettaxl(struct, partner_chains, cutoff, str(out_all_name))
 
-        out_name = output_dir.joinpath(f'{pdb_name}_XLs.txt')
+        out_name = output_dir.joinpath(f'{pdb_name}_xls.txt')
 
         out_xls_list.append(out_name)
 
