@@ -31,16 +31,16 @@ def xlvalidation(structure, top_XL_file, cut_off):
     for pp in ppb.build_peptides(structure[0]['A']):
         sequence_list_A.append(str(pp.get_sequence()))
     sequence_A = ''.join(sequence_list_A)
-    print ("\nPartner 1 sequence is: \n", sequence_A)
+    # print ("\nPartner 1 sequence is: \n", sequence_A)
 
     for pp in ppb.build_peptides(structure[0]['B']):
         sequence_list_B.append(str(pp.get_sequence()))
 
     sequence_B = ''.join(sequence_list_B)
-    print ("\nPartner 2 sequence is: \n", sequence_B)
+    # print ("\nPartner 2 sequence is: \n", sequence_B)
 
     sequence_combined = sequence_A + sequence_B
-    print ("\nCombined sequence is: \n", sequence_combined)
+    # print ("\nCombined sequence is: \n", sequence_combined)
 
 
     ## 2. Reading the xl_file
@@ -79,27 +79,24 @@ def xlvalidation(structure, top_XL_file, cut_off):
                         seq_pos_p1_k = pos1+K_pos_P1
                         seq_pos_p2_k = pos2+K_pos_P2
 
-            print ("aa positions on the sequences: ", seq_pos_p1_k, seq_pos_p2_k)
+            # print ("aa positions on the sequences: ", seq_pos_p1_k, seq_pos_p2_k)
 
             if ((peptide1 in sequence_combined) and (peptide2 in sequence_combined)):
                 eulidean_dist = eu_dist(structure, seq_pos_p1_k+1, seq_pos_p2_k+1)
 
-                print ("Euclidean distance is:  ", eulidean_dist, "\n")
+                # print ("Euclidean distance is:  ", eulidean_dist, "\n")
 
-            else:
-                print ("The XL is not found on the protein sequence. Check each peptide to be valid!\n")
-                # out_sc_file.write("XL is not found\n")
+            # else:
+                # print ("The XL is not found on the protein sequence. Check each peptide to be valid!\n")
 
 
             if eulidean_dist <= cut_off:
                 good_XL_list.append(xl)
                 output_xl_number += 1
                 normal_dist_score += (10 * (1/(exp ( pow( (eulidean_dist-17.5),2 )/30 )))) #Normal Distribution Formula Ae^-(x-M)/2q^2
-                # out_sc_file.write(xl+", ")
-                print ("found a valid XL!", eulidean_dist, "\n")
+                # print ("found a valid XL!", eulidean_dist, "\n")
         except:
             pass
 
-    # out_sc_file.write(str(output_xl_number)+", "+str(normal_dist_score))
-    print ("Score:", output_xl_number, normal_dist_score)
+    # print ("Score:", output_xl_number, normal_dist_score)
     return output_xl_number, normal_dist_score, good_XL_list

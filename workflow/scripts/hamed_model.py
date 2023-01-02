@@ -13,7 +13,8 @@ from utils.cheetah import xlvalidation as xlv, megadock_run as mdr
 
 def modeling(complex_pdb: Path,
              top_xls: Path,
-             output_dir: Path, cut_off: int, n_models: int, n_filters: int):
+             output_dir: Path,
+             dock_file: Path, cut_off: int, n_models: int, n_filters: int):
 
     parser = PDBParser()
 
@@ -76,7 +77,9 @@ def modeling(complex_pdb: Path,
         print("Round number ", break_counter)
 
         dock_structure = mdr.megadock_run(pA_out,
-                                          pB_out, modeling_counter, output_dir)
+                                          pB_out,
+                                          dock_file,
+                                          modeling_counter, output_dir)
 
         modeling_counter += 1
 
@@ -140,6 +143,10 @@ def modeling(complex_pdb: Path,
               required=True,
               type=click.Path(exists=True, path_type=Path),
               help='')
+@click.option('--dock_file',
+              required=True,
+              type=click.Path(exists=True, path_type=Path),
+              help='')
 @click.option('--n_models',
               type=int,
               default=10,
@@ -152,11 +159,17 @@ def modeling(complex_pdb: Path,
               type=int,
               default=35,
               help='')
-def run_model(complex_pdb, output_dir, top_xls, n_models, n_filters, cut_off):
+def run_model(complex_pdb,
+              output_dir, top_xls, dock_file, n_models, n_filters, cut_off):
     """
     """
 
-    xl_files_list, pdb_files_list, score_t_list =  modeling(complex_pdb, top_xls, output_dir, cut_off, n_models, n_filters)
+    (xl_files_list,
+     pdb_files_list,
+     score_t_list) = modeling(complex_pdb,
+                              top_xls,
+                              output_dir,
+                              dock_file, cut_off, n_models, n_filters)
 
     # TODO:
     # Rename the top model and XL files...
