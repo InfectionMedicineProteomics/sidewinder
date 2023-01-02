@@ -3,3 +3,5 @@ __pycache__/
 pdb_operations.py
 pdb_handler.py
 results
+viewer.ipynb
+*.sif

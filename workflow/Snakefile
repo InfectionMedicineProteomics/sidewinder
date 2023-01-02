@@ -9,6 +9,8 @@ __email__ = 'joel.strobaek@gmail.com'
 # TODO:
 # - Remove ms2 parameter hard coding!
 #       - Set optional click input params with defaults
+# - Look into adding logs for all the rules
+#       - Diverting STDOUT/STDERR to log files
 
 
 from pathlib import Path
@@ -36,7 +38,6 @@ rule all:
     # TODO: add in proper wildcards!
     #
     input:
-        dck = OUTDIR / 'model_A-model_B.out',
         mgf = OUTDIR / 'ms2_convert' / f'{config["input_ms2"].stem}.mgf',
         sql = OUTDIR / 'ms2_results.sql',
         img_dir = OUTDIR / 'top_spectra',
@@ -87,7 +88,7 @@ rule megadock:
         mod_a = rules.pdb_handling.output.mod_a,
         mod_b = rules.pdb_handling.output.mod_b
     output:
-        rules.all.input.dck
+        OUTDIR / 'model_A-model_B.out'
     params:
         megadock = 'workflow/scripts/utils/cheetah/megadock.py'
     conda:
@@ -134,7 +135,8 @@ rule ms2:
 rule modeling:
     input:
         PDB = rules.pdb_handling.output.PDB,
-        top_xls = rules.ms2.output.top_xls
+        top_xls = rules.ms2.output.top_xls,
+        dock_file = rules.megadock.output
     output:
         top_model = rules.all.input.top_model,
         top_model_xls = rules.all.input.top_model_xls
@@ -148,6 +150,8 @@ rule modeling:
         "python3 {params.modeling_script} "
         "--complex_pdb {input.PDB} "
         "--output_dir {OUTDIR} "
-        "--top_xls {input.top_xls}"
+        "--top_xls {input.top_xls} "
+        "--dock_file {input.dock_file} "
+        "--cut_off {params.cut_off}"
 
 # rule visualization:
