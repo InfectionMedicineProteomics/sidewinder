@@ -5,3 +5,4 @@ pdb_handler.py
 results
 viewer.ipynb
 *.sif
+config/user_config.yml

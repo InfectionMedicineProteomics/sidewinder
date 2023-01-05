@@ -1,14 +1,12 @@
 # User configurable options:
 
 # Default output_dir: 'results/{date}'
-output_dir: '/home/jo0348st/resources/projects/2023-heusel_m1_abs/results/230102/txms_test'
+output_dir: '/path/to/output_directory'
 
-input_pdb1: '/srv/data1/home/jo0348st/data/heusel_igxl/pdb/m1_af2_230102.pdb'
-input_pdb2: '/srv/data1/home/jo0348st/data/heusel_igxl/pdb/LUIGSeq_m11_top01_ranked_0.pdb'
+input_pdb1: '/path/to/input_pdb_1'
+input_pdb2: '/path/to/input_pdb_2'
 
-input_ms2: '/srv/data1/home/jo0348st/data/heusel_igxl/ms2/DTMH_M2111_349.raw'
+input_ms2: '/path/to/input_ms2_file'  # Valid formats: [mzml, mgf]
 
 distance_cut_off: 30  # In Ångström
 num_of_top_filters: 2
-
-# Static configuration (not user specified):
