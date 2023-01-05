@@ -72,8 +72,10 @@ def modeling(complex_pdb: Path,
     # Global docking (low resolution)
     modeling_counter = 1
 
+    print("Modeling is started ...\n")
+
     while break_counter <= 100:
-        print("Modeling is started ...\n")
+
         print("Round number ", break_counter)
 
         dock_structure = mdr.megadock_run(pA_out,

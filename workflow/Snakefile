@@ -11,6 +11,12 @@ __email__ = 'joel.strobaek@gmail.com'
 #       - Set optional click input params with defaults
 # - Look into adding logs for all the rules
 #       - Diverting STDOUT/STDERR to log files
+# - Set temp files
+#       - dock_tmp.pdb / lig_tmp.pdb
+#       - pdb_A/B.pdb
+# - Add some subfolders to the results dir
+#       - supp_files: all_xls.txt, seq_A/B.txt, detected_spectra.txt,
+#                     model_A/B.pdb
 
 
 from pathlib import Path
@@ -20,7 +26,7 @@ from snakemake.utils import min_version
 
 min_version("6.0")  # Min version for using modules.
 
-configfile: "config/config.yml"
+configfile: "config/user_config.yml"
 
 
 # Convert config paths from string to Path objects.
@@ -75,6 +81,8 @@ rule seq2xl:
         seq2xl = 'workflow/scripts/utils/cheetah/seq2xl.py'
     conda:
         'envs/biopython_env.yml'
+    threads:
+        12
     shell:
         "python3 {params.seq2xl} "
         "--seq_file1 {input.seq_a} "
@@ -82,23 +90,29 @@ rule seq2xl:
         "--output_dir {OUTDIR}"
 
 rule megadock:
-    # TODO: re-write to use native docker support instead of the python SDK...
-    #
     input:
         mod_a = rules.pdb_handling.output.mod_a,
         mod_b = rules.pdb_handling.output.mod_b
     output:
         OUTDIR / 'model_A-model_B.out'
     params:
-        megadock = 'workflow/scripts/utils/cheetah/megadock.py'
-    conda:
-        'envs/biopython_env.yml'
+        megadock = '/usr/local/megadock/megadock-4.1.1/megadock',
+        predictions = 1000,  # Default=2000.
+        mod_a = Path('/data') / Path(rules.pdb_handling.output.mod_a).name,
+        mod_b = Path('/data') / Path(rules.pdb_handling.output.mod_b).name,
+        output = '/data/model_A-model_B.out',
+        log = '/data/dock.log'
+    container:
+        'workflow/envs/megadock010.sif'
+    threads:
+        round(workflow.cores * 0.85)
     shell:
-        "python3  {params.megadock} "
-        "--receptor {input.mod_a} "
-        "--ligand {input.mod_b} "
-        "--output_dir {OUTDIR} "
-        "--n_out 1000"
+        "{params.megadock} "
+        "-R {params.mod_a} "
+        "-L {params.mod_b} "
+        "-o {params.output} "
+        "-N {params.predictions} "
+        "> {params.log}"
 
 rule msconvert:
     input:
@@ -109,6 +123,8 @@ rule msconvert:
         outdir = OUTDIR / 'ms2_convert',
     conda:
         'envs/proteowizard_env.yml'
+    threads:
+        12
     shell:
         MSCONVERT_CMD  # Adjust shell command based on file suffix:
                        #    - if not '.mgf': convert
@@ -133,6 +149,8 @@ rule ms2:
         "--output_dir {OUTDIR}"
 
 rule modeling:
+    # TODO: Deal with no-hit-scenarios.
+    #
     input:
         PDB = rules.pdb_handling.output.PDB,
         top_xls = rules.ms2.output.top_xls,
@@ -146,6 +164,8 @@ rule modeling:
         modeling_script = 'workflow/scripts/hamed_model.py'
     conda:
         'envs/biopython_env.yml'
+    threads:
+        round(workflow.cores * 0.85)
     shell:
         "python3 {params.modeling_script} "
         "--complex_pdb {input.PDB} "

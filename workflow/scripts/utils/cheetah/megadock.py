@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Python docker SDK code calling MEGADOCK 4.
+
+[2023-01-04] Currently not functioning: discontinuous memory issue.
 """
 
 __author__ = 'Joel Ströbaek'

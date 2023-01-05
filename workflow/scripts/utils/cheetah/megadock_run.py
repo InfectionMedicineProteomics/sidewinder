@@ -1,8 +1,8 @@
 import subprocess
-from os import getuid
-from pathlib import Path
+# from os import getuid
+# from pathlib import Path
 
-import docker
+# import docker
 from Bio.PDB import PDBParser
 
 def megadock_run(pdb_a, pdb_b, dock_file, model_number, output_dir):
