@@ -46,8 +46,9 @@ def mgf_writer(mgf_output_file: Path, spectra: dict):
 
     print('END IONS\n', file=f)
 
-def DDA_clean(xl_list: List[str],
+def DDA_filter(xl_list: List[str],
               mgf_file: Path,
+              output_dir: Path,
               precursor_delta: float, xlinker_mass: int, ptm_type: str) -> Path:
     """Clean DDA MGF file.
 
@@ -77,7 +78,7 @@ def DDA_clean(xl_list: List[str],
     # Read the MGF (MS/MS) file.
     mgf_dict_list = list(mgf.read(str(mgf_file)))
 
-    output_file = mgf_file.parent / f'{mgf_file.stem}_cleaned.mgf'
+    output_file = output_dir / f'{mgf_file.stem}_filtered.mgf'
 
     with open(output_file, 'w') as f:
 
