@@ -42,6 +42,8 @@ BINDERS_LIST, = glob_wildcards(f'{config["binders_dir"]}/{{binder}}.pdb')
 
 MGF_STEM = config["ms2_file"].stem
 
+BLOCK_FV = True if bool(config['block_antibody_Fv_FR']) else False
+
 MSCONVERT_CMD = (f'cp {{input.ms2}} {{output.mgf}}'
                  if (config['ms2_file'].suffix.lower() in '.mgf')
                  else f'mono {{params.thermoRawFileParser}} \
@@ -79,6 +81,23 @@ rule pdb_handling:
         "--pdb2 {input.PDB_b} "
         "--output_dir {params.outdir}"
 
+if BLOCK_FV:
+
+    rule block_pdb:
+        input:
+            pdb = rules.pdb_handling.output.mod_a
+        output:
+            mod_a = f'{{outdir}}/{{target}}/{{binder}}/model_A_blocked.pdb'
+        params:
+            fv_blocking = 'workflow/scripts/mdock-block_pdb.py',
+            outdir = f'{{outdir}}/{{target}}/{{binder}}'
+        conda:
+            'envs/biopython_env.yml'
+        shell:
+            "python3 {params.fv_blocking} "
+            "--fv_pdb {input.pdb} "
+            "--output_dir {params.outdir}"
+
 rule seq2xl:
     input:
         seq_a = rules.pdb_handling.output.seq_a,
@@ -98,7 +117,8 @@ rule seq2xl:
 
 rule megadock:
     input:
-        mod_a = rules.pdb_handling.output.mod_a,
+        mod_a = (rules.block_pdb.output.mod_a
+                 if BLOCK_FV else rules.pdb_handling.output.mod_a),
         mod_b = rules.pdb_handling.output.mod_b
     output:
         f'{{outdir}}/{{target}}/{{binder}}/model_A-model_B.out'

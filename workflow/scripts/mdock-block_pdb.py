@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import shutil
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -210,7 +211,7 @@ class fv_indexing:
 @click.option('--fv_pdb',
               required=True,
               type=click.Path(exists=True, path_type=Path),
-              help='Path to MegaDock input receptor antibody Fv .pdb)')
+              help='Path to MegaDock input receptor antibody Fv .pdb')
 @click.option('--output_dir',
               '-o',
               required=True,
@@ -218,6 +219,10 @@ class fv_indexing:
               help='Path to output directory')
 def block_fv_pdb(fv_pdb, output_dir):
     """..."""
+
+    fv_pdb = fv_pdb.resolve()
+
+    output_dir = output_dir.resolve()
 
     fv_index = fv_indexing(fv_pdb, 'chothia')
 
@@ -242,6 +247,14 @@ def block_fv_pdb(fv_pdb, output_dir):
     for chain, block_string in block_dict.items():
 
         blocker.block_receptor(chain, block_string)
+
+    tmp_out = blocker.receptor_blocked
+
+    final_out = str(output_dir / 'model_A_blocked.pdb')
+
+    shutil.copy(str(tmp_out), final_out)
+
+    tmp_out.unlink()
 
 
 if __name__ == "__main__":
