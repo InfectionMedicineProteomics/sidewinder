@@ -19,6 +19,7 @@ __email__ = 'joel.strobaek@gmail.com'
 #                     model_A/B.pdb
 
 
+from glob import glob
 from pathlib import Path
 
 from snakemake.utils import min_version
@@ -30,80 +31,86 @@ configfile: "config/user_config.yml"
 
 
 # Convert config paths from string to Path objects.
-config_paths = ['output_dir', 'input_pdb1', 'input_pdb2', 'input_ms2']
+config_paths = ['output_dir', 'targets_dir', 'binders_dir', 'ms2_file']
 config = {k: (v if k not in config_paths else Path(v).resolve()) for k, v in config.items()}
 
 OUTDIR = config['output_dir']
 
+TARGETS_LIST, = glob_wildcards(f'{config["targets_dir"]}/{{target}}.pdb')
+
+BINDERS_LIST, = glob_wildcards(f'{config["binders_dir"]}/{{binder}}.pdb')
+
+MGF_STEM = config["ms2_file"].stem
+
 MSCONVERT_CMD = (f'cp {{input.ms2}} {{output.mgf}}'
-                 if (config['input_ms2'].suffix.lower() in '.mgf')
-                 else f'msconvert {{input.ms2}} --mgf -o {{params.outdir}}')
+                 if (config['ms2_file'].suffix.lower() in '.mgf')
+                 else f'mono {{params.thermoRawFileParser}} \
+                        -i={{input.ms2}} \
+                        -o={{params.outdir}} \
+                        -f=0')
 
 
 rule all:
-    # TODO: add in proper wildcards!
-    #
     input:
-        mgf = OUTDIR / 'ms2_convert' / f'{config["input_ms2"].stem}.mgf',
-        sql = OUTDIR / 'ms2_results.sql',
-        img_dir = OUTDIR / 'top_spectra',
-        top_xls = OUTDIR / 'top_xls.txt',
-        top_model = OUTDIR / 'best_model.pdb',
-        top_model_xls = OUTDIR / 'best_model_xl.txt'
+        model_output = expand(f'{{outdir}}/{{target}}/{{binder}}/{{file}}',
+                              outdir=OUTDIR,
+                              target=TARGETS_LIST,
+                              binder=BINDERS_LIST,
+                              file=['best_model.pdb', 'best_model_xls.txt'])
 
 rule pdb_handling:
     input:
-        PDB_a = config['input_pdb1'],
-        PDB_b = config['input_pdb2']
+        PDB_a = ancient(f'{config["targets_dir"]}/{{target}}.pdb'),
+        PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb')
     output:
-        PDB = OUTDIR / 'complex_AB.pdb',
-        seq_a = OUTDIR / 'seq_A.txt',
-        seq_b = OUTDIR / 'seq_B.txt',
-        mod_a = OUTDIR / 'model_A.pdb',
-        mod_b = OUTDIR / 'model_B.pdb'
+        PDB = f'{{outdir}}/{{target}}/{{binder}}/complex_AB.pdb',
+        seq_a = f'{{outdir}}/{{target}}/{{binder}}/seq_A.txt',
+        seq_b = f'{{outdir}}/{{target}}/{{binder}}/seq_B.txt',
+        mod_a = f'{{outdir}}/{{target}}/{{binder}}/model_A.pdb',
+        mod_b = f'{{outdir}}/{{target}}/{{binder}}/model_B.pdb'
     params:
-        pdb_handling = 'workflow/scripts/utils/pdb_handling.py'
+        pdb_handling = 'workflow/scripts/utils/pdb_handling.py',
+        outdir = f'{{outdir}}/{{target}}/{{binder}}'
     conda:
         'envs/biopython_env.yml'
     shell:
         "python3 {params.pdb_handling} "
         "--pdb1 {input.PDB_a} "
         "--pdb2 {input.PDB_b} "
-        "--output_dir {OUTDIR}"
+        "--output_dir {params.outdir}"
 
 rule seq2xl:
     input:
         seq_a = rules.pdb_handling.output.seq_a,
         seq_b = rules.pdb_handling.output.seq_b
     output:
-        OUTDIR / 'all_xls.txt'
+        f'{{outdir}}/{{target}}/{{binder}}/all_xls.txt'
     params:
-        seq2xl = 'workflow/scripts/utils/cheetah/seq2xl.py'
+        seq2xl = 'workflow/scripts/utils/cheetah/seq2xl.py',
+        outdir = f'{{outdir}}/{{target}}/{{binder}}'
     conda:
         'envs/biopython_env.yml'
-    threads:
-        12
     shell:
         "python3 {params.seq2xl} "
         "--seq_file1 {input.seq_a} "
         "--seq_file2 {input.seq_b} "
-        "--output_dir {OUTDIR}"
+        "--output_dir {params.outdir}"
 
 rule megadock:
     input:
         mod_a = rules.pdb_handling.output.mod_a,
         mod_b = rules.pdb_handling.output.mod_b
     output:
-        OUTDIR / 'model_A-model_B.out'
+        f'{{outdir}}/{{target}}/{{binder}}/model_A-model_B.out'
     params:
         megadock = '/usr/local/megadock/megadock-4.1.1/megadock',
-        predictions = 1000,  # Default=2000.
-        mod_a = Path('/data') / Path(rules.pdb_handling.output.mod_a).name,
-        mod_b = Path('/data') / Path(rules.pdb_handling.output.mod_b).name,
-        output = '/data/model_A-model_B.out',
-        log = '/data/dock.log'
+        predictions = 3600,  # Default=2000.
+        mod_a = f'/data/{{target}}/{{binder}}/model_A.pdb',
+        mod_b = f'/data/{{target}}/{{binder}}/model_B.pdb',
+        output = f'/data/{{target}}/{{binder}}/model_A-model_B.out',
+        log = f'/data/{{target}}/{{binder}}/dock.log'
     container:
-        'workflow/envs/megadock010.sif'
+        '/srv/data1/home/jo0348st/containers/megadock010.sif'
     threads:
         round(workflow.cores * 0.85)
     shell:
@@ -115,16 +122,17 @@ rule megadock:
         "> {params.log}"
 
 rule msconvert:
+    # TODO:
+    #   - Sort proper thermoRawFileParser inclusion
     input:
-        ms2 = config['input_ms2']
+        ms2 = (config['ms2_file'])
     output:
-        mgf = rules.all.input.mgf
+        mgf = f'{{outdir}}/ms2_convert/{MGF_STEM}.mgf'
     params:
-        outdir = OUTDIR / 'ms2_convert',
+        outdir = f'{{outdir}}/ms2_convert',
+        thermoRawFileParser = config['thermoRawFileParser']
     conda:
-        'envs/proteowizard_env.yml'
-    threads:
-        12
+        'envs/mono_env.yml'
     shell:
         MSCONVERT_CMD  # Adjust shell command based on file suffix:
                        #    - if not '.mgf': convert
@@ -132,36 +140,44 @@ rule msconvert:
 
 rule ms2:
     input:
-        mgf = rules.msconvert.output.mgf,
-        xls = rules.seq2xl.output
+        mgf = ancient(rules.msconvert.output.mgf),
+        xls = ancient(rules.seq2xl.output)
     output:
-        sql = rules.all.input.sql,
-        img_dir = directory(rules.all.input.img_dir),
-        top_xls = rules.all.input.top_xls
+        sql = f'{{outdir}}/{{target}}/{{binder}}/ms2_results.sql',
+        img_dir = directory(f'{{outdir}}/{{target}}/{{binder}}/top_spectra'),
+        top_xls = f'{{outdir}}/{{target}}/{{binder}}/top_xls.txt',
+        mgf_filt = f'{{outdir}}/{{target}}/{{binder}}/{MGF_STEM}_filtered.mgf'
     params:
-        ms2_script = 'workflow/scripts/utils/cheetah/ms2.py'
+        ms2_script = 'workflow/scripts/utils/cheetah/ms2.py',
+        outdir = f'{{outdir}}/{{target}}/{{binder}}'
     conda:
         'envs/pyteomics_env.yml'
     shell:
         "python3 {params.ms2_script} "
         "--mgf_file {input.mgf} "
         "--xl_file {input.xls} "
-        "--output_dir {OUTDIR}"
+        "--output_dir {params.outdir}"
 
 rule modeling:
-    # TODO: Deal with no-hit-scenarios.
+    # TODO:
+    #   - Deal with no-hit-scenarios
+    #   - Save euclidean distances to file
+    #       - Include aa-numbering and xyz-coord anchors
     #
     input:
         PDB = rules.pdb_handling.output.PDB,
         top_xls = rules.ms2.output.top_xls,
         dock_file = rules.megadock.output
     output:
-        top_model = rules.all.input.top_model,
-        top_model_xls = rules.all.input.top_model_xls
+        top_model = f'{{outdir}}/{{target}}/{{binder}}/best_model.pdb',
+        top_xls = f'{{outdir}}/{{target}}/{{binder}}/best_model_xls.txt',
+        scores = f'{{outdir}}/{{target}}/{{binder}}/lr_models/scores.csv'
     params:
         cut_off = config['distance_cut_off'],
         n_top_f = config['num_of_top_filters'],
-        modeling_script = 'workflow/scripts/hamed_model.py'
+        n_docks = 3600,  # Default=1000.
+        modeling_script = 'workflow/scripts/hamed_model.py',
+        outdir = f'{{outdir}}/{{target}}/{{binder}}'
     conda:
         'envs/biopython_env.yml'
     threads:
@@ -169,9 +185,10 @@ rule modeling:
     shell:
         "python3 {params.modeling_script} "
         "--complex_pdb {input.PDB} "
-        "--output_dir {OUTDIR} "
-        "--top_xls {input.top_xls} "
+        "--output_dir {params.outdir} "
+        "--top_xls_file {input.top_xls} "
         "--dock_file {input.dock_file} "
+        "--n_models {params.n_docks} "
         "--cut_off {params.cut_off}"
 
 # rule visualization:
