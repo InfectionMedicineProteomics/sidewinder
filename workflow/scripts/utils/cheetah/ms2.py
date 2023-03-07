@@ -19,7 +19,7 @@ import click
 import pandas
 from pyteomics import mgf
 
-from ms2_utils import dda_clean
+from ms2_utils import dda_filter
 from ms2_utils import fig_maker
 from ms2_utils.mgf_utils import fragment_generator
 
@@ -64,10 +64,11 @@ def taxlink(all_xls_file: Path,
     # Considering the list of input XLs, we remove all extra spectra
     # from input MGF according to the pre-cursor m/z and make a new
     # 'cleaned version' to analyze.
-    cleaned_mgf_file = dda_clean.DDA_clean(all_xls_list,
-                                           mgf_file,
-                                           delta,
-                                           xlinker_mass, ptm_type)
+    filtered_mgf_file = dda_filter.DDA_filter(all_xls_list,
+                                             mgf_file,
+                                             output_dir,
+                                             delta,
+                                             xlinker_mass, ptm_type)
 
     # Build SQLite3 database.
     sql_db_file = output_dir / 'ms2_results.sql'
@@ -88,7 +89,7 @@ def taxlink(all_xls_file: Path,
     c.execute('PRAGMA synchronous = NORMAL')
 
     # Read in cleaned MGF file.
-    mgf_dict_list = list(mgf.read(str(cleaned_mgf_file)))
+    mgf_dict_list = list(mgf.read(str(filtered_mgf_file)))
 
     output_file = output_dir / 'detected_spectra.txt'
 
@@ -336,6 +337,7 @@ def run_ms2_analysis(mgf_file: Path, xl_file: Path, output_dir: Path) -> Path:
 
     engine = create_engine(f'sqlite:///{str(sql_db_path)}')
 
+    # Save the XLs that have the most support from the MS2 spectra.
     query = 'SELECT DISTINCT XL FROM MS2Data WHERE count>10 ORDER BY count DESC'
 
     ms2_xls_df = pandas.read_sql_query(query, engine)

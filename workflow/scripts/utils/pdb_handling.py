@@ -83,29 +83,36 @@ def close_pipes(pipes: list) -> None:
 
         p.stdout.close()
 
+def mkdir(context, param, value: Path) -> Path:
+
+    value.mkdir(exist_ok=True, parents=True)
+
+    return value
+
 
 @click.command()
 @click.version_option(version='1.0')
 @click.option(
     '--pdb1',
     required=True,
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(exists=True, resolve_path=True, path_type=Path),
     help='PDB 1'
 )
 @click.option(
     '--pdb2',
     required=True,
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(exists=True, resolve_path=True, path_type=Path),
     help='PDB 2'
 )
 @click.option(
     '--output_dir',
     required=True,
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(resolve_path=True, path_type=Path),
+    callback=mkdir,
     help='Output directory'
 )
 def cheetah_pdb_format(pdb1: Path,
-    pdb2: Path, output_dir: Path) -> Tuple[Path, Path, Path]:
+                       pdb2: Path, output_dir: Path):
     """...
 
     ...
@@ -183,7 +190,6 @@ def cheetah_pdb_format(pdb1: Path,
         # Execute pipe.
         p4.communicate()
 
-    #return output_pdb, seq_files[0], seq_files[1]
 
 if __name__ == '__main__':
 

@@ -43,7 +43,7 @@ def megadock_run(pdb_a, pdb_b, dock_file, model_number, output_dir):
     #     #print(f'\n> Decoy docking {"_"*64}', file=f)
     #     print(run.decode(encoding='utf8'), file=f)
 
-    container = 'workflow/envs/megadock010.sif'
+    container = '/srv/data1/home/jo0348st/containers/megadock010.sif'
 
     decoygen = '/usr/local/megadock/megadock-4.1.1/decoygen'
 

@@ -18,7 +18,7 @@ def eu_dist(structure, a, b):
     return atom2 - atom1
 
 
-def xlvalidation(structure, top_XL_file, cut_off):
+def xlvalidation(structure, top_xls, cut_off):
 
     ## 1. Reading and storing the pdb in a pose
     #parser = PDBParser()
@@ -42,16 +42,10 @@ def xlvalidation(structure, top_XL_file, cut_off):
     sequence_combined = sequence_A + sequence_B
     # print ("\nCombined sequence is: \n", sequence_combined)
 
-
-    ## 2. Reading the xl_file
-    with open(top_XL_file,'r') as xlfile:
-        top_XL = xlfile.read().splitlines() # each rows as one element of the list
-
     output_xl_number = 0
     normal_dist_score = 0.0
     good_XL_list = []
-    for num_xl,xl in enumerate(top_XL):
-        print (num_xl+1, xl)
+    for num_xl,xl in enumerate(top_xls):
 
         K_pos_P1 = 0
         K_pos_P2 = 0
