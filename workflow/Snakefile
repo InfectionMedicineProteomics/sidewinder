@@ -54,11 +54,11 @@ MSCONVERT_CMD = (f'cp {{input.ms2}} {{output.mgf}}'
 
 rule all:
     input:
-        model_output = expand(f'{{outdir}}/{{target}}/{{binder}}/{{file}}',
+        model_output = expand(f'{{outdir}}/{{target}}/{{binder}}/{{files}}',
                               outdir=OUTDIR,
                               target=TARGETS_LIST,
                               binder=BINDERS_LIST,
-                              file=['best_model.pdb', 'best_model_xls.txt'])
+                              files=['best_model.pdb', 'best_model_xls.txt'])
 
 rule pdb_handling:
     input:
