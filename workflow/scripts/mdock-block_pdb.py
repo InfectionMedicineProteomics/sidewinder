@@ -208,45 +208,67 @@ class fv_indexing:
 
 @click.command()
 @click.version_option(version='1.0a')
-@click.option('--fv_pdb',
+@click.option('--multi_chain_pdb',
               required=True,
               type=click.Path(exists=True, path_type=Path),
-              help='Path to MegaDock input receptor antibody Fv .pdb')
+              help='Path to Sidewinder-MS input antibody Fv .pdb')
+@click.option('--single_chain_pdb',
+              required=True,
+              type=click.Path(exists=True, path_type=Path),
+              help='Path to Sidewinder-MS edited single chain antibody Fv .pdb')
 @click.option('--output_dir',
               '-o',
               required=True,
               type=click.Path(path_type=Path),
               help='Path to output directory')
-def block_fv_pdb(fv_pdb, output_dir):
+def block_fv_pdb(multi_chain_pdb, output_dir):
     """..."""
 
-    fv_pdb = fv_pdb.resolve()
+    multi_chain_pdb = multi_chain_pdb.resolve()
+
+    single_chain_pdb = single_chain_pdb.resolve()
 
     output_dir = output_dir.resolve()
 
-    fv_index = fv_indexing(fv_pdb, 'chothia')
+    fv_index = fv_indexing(multi_chain_pdb, 'chothia')
 
-    blocker = block_pdb(fv_pdb, output_dir)
+    blocker = block_pdb(single_chain_pdb, output_dir)
 
     block_target = 'FR'  # FR or CDR
 
-    block_dict = {}
+    index_convert = {}
+
+    last_index = 1
+
+    for chain, seq in fv_index.seq_records.items():
+
+        index_convert[chain] = {}
+
+        for idx, res in enumerate(seq):
+
+            index_convert[chain][idx+1] = last_index
+
+            last_index += 1
+
+    block_list = []
 
     for chain, d in fv_index.chain_annotations.items():
 
         block_index = []
 
-        for k, l in d['index'].items():
+        for region, index in d['index'].items():
 
-            if k[:-1] in block_target:
+            if region[:-1] in block_target:
 
-                block_index.extend(l)
+                block = [index_convert[chain][idx] for idx in index]
 
-        block_dict[chain] = blocker.get_resarg(block_index)
+                block_index.extend(block)
 
-    for chain, block_string in block_dict.items():
+        block_list.append(blocker.get_resarg(block_index))
 
-        blocker.block_receptor(chain, block_string)
+    block_string = ','.join(block_list)
+
+    blocker.block_receptor('A', block_string)
 
     tmp_out = blocker.receptor_blocked
 

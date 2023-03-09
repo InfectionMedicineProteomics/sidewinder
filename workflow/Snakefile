@@ -82,12 +82,15 @@ rule pdb_handling:
         "--output_dir {params.outdir}"
 
 if BLOCK_FV:
+    # TODO: Save process to SQLite DB and make output temporary.
 
     rule block_pdb:
         input:
-            pdb = rules.pdb_handling.output.mod_a
+            mc_pdb = rules.pdb_handling.input.PDB_a,
+            sc_pdb = rules.pdb_handling.output.mod_a
         output:
-            mod_a = f'{{outdir}}/{{target}}/{{binder}}/model_A_blocked.pdb'
+            mod_a = (f'{{outdir}}/{{target}}/{{binder}}/'
+                     f'model_A_blocked.pdb')  # Make temporary later.
         params:
             fv_blocking = 'workflow/scripts/mdock-block_pdb.py',
             outdir = f'{{outdir}}/{{target}}/{{binder}}'
@@ -95,7 +98,8 @@ if BLOCK_FV:
             'envs/biopython_env.yml'
         shell:
             "python3 {params.fv_blocking} "
-            "--fv_pdb {input.pdb} "
+            "--multi_chain_pdb {input.mc_pdb} "
+            "--single_chain_pdb {input.sc_pdb} "
             "--output_dir {params.outdir}"
 
 rule seq2xl:
