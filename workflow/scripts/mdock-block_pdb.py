@@ -221,7 +221,7 @@ class fv_indexing:
               required=True,
               type=click.Path(path_type=Path),
               help='Path to output directory')
-def block_fv_pdb(multi_chain_pdb, output_dir):
+def block_fv_pdb(multi_chain_pdb, single_chain_pdb, output_dir):
     """..."""
 
     multi_chain_pdb = multi_chain_pdb.resolve()
