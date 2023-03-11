@@ -196,7 +196,7 @@ def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]):
               help='')
 @click.option('--n_models',
               type=int,
-              default=100,
+              default=1000,
               help='')
 @click.option('--n_filters',
               type=int,

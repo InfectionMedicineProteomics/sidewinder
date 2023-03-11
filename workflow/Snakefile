@@ -213,6 +213,7 @@ rule modeling:
         "--top_xls_file {input.top_xls} "
         "--dock_file {input.dock_file} "
         "--n_models {params.n_docks} "
+        "--n_filters {params.n_top_f} "
         "--cut_off {params.cut_off}"
 
 # rule visualization:
