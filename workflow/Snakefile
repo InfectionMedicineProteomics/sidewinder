@@ -17,6 +17,7 @@ __email__ = 'joel.strobaek@gmail.com'
 # - Add some subfolders to the results dir
 #       - supp_files: all_xls.txt, seq_A/B.txt, detected_spectra.txt,
 #                     model_A/B.pdb
+# - MAKE A BETTER FOLDER STRUCTURE FOR THE OUTPUT
 
 
 from glob import glob
