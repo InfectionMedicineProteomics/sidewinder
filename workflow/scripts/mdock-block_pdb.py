@@ -272,7 +272,7 @@ def block_fv_pdb(multi_chain_pdb, single_chain_pdb, output_dir):
 
     tmp_out = blocker.receptor_blocked
 
-    final_out = str(output_dir / 'model_A_blocked.pdb')
+    final_out = str(output_dir / 'chain_A_blocked.pdb')
 
     shutil.copy(str(tmp_out), final_out)
 

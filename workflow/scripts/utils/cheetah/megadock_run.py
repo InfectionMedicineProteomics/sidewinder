@@ -57,7 +57,7 @@ def megadock_run(pdb_a, pdb_b, dock_file, model_number, output_dir):
                            f'/data/{pdb_b.name}',
                            f'/data/{dock_file.name}', f'{model_number}']
 
-    subprocess.run(singularity_command)
+    subprocess.run(singularity_command, check=True)
 
     tmp_lig_pdb = output_dir / 'lig_tmp.pdb'
 
@@ -70,11 +70,11 @@ def megadock_run(pdb_a, pdb_b, dock_file, model_number, output_dir):
 
     with open(tmp_dock_pdb, 'w') as f:
 
-        subprocess.run(os_command_1, stdout=f)  # Run command.
+        subprocess.run(os_command_1, stdout=f)
 
         subprocess.run(os_command_2, stdout=f)
 
     # Parse pseudo-docked PDB and return structure object:
     parser = PDBParser()
 
-    return parser.get_structure('DOCK', tmp_dock_pdb)
+    return parser.get_structure(f'DOCK_{model_number}', tmp_dock_pdb)

@@ -48,11 +48,11 @@ def taxlink(all_xls_file: Path,
     # Ethylene glycol bis(succinimidyl succinate):
     EGS_mass = 226.04774
 
-    xlinker_dic = {1: DSS_mass,
+    xlinker_dict = {1: DSS_mass,
                    2: DSG_mass,
                    3: EGS_mass}
 
-    xlinker_mass = xlinker_dic[xlinker_type]
+    xlinker_mass = xlinker_dict[xlinker_type]
 
     fig_threshold = 10  # Set number of figures.
 
@@ -63,7 +63,7 @@ def taxlink(all_xls_file: Path,
 
     # Considering the list of input XLs, we remove all extra spectra
     # from input MGF according to the pre-cursor m/z and make a new
-    # 'cleaned version' to analyze.
+    # filtered version to analyze.
     filtered_mgf_file = dda_filter.DDA_filter(all_xls_list,
                                              mgf_file,
                                              output_dir,
@@ -120,9 +120,9 @@ def taxlink(all_xls_file: Path,
 
                 if spec_charge in range (3,9):
 
-                    mz_difference_Light = 1.000
+                    # mz_difference_Light = 1.000
 
-                    mz_difference_Heavy = 1.000
+                    # mz_difference_Heavy = 1.000
 
                     mz_difference_Light = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:4])
 
@@ -165,7 +165,7 @@ def taxlink(all_xls_file: Path,
 
                         print(spectra['params']['title'], file=f)
 
-                        for num_mz,anymZ in enumerate(mz_heavy_all):
+                        for num_mz, anymZ in enumerate(mz_heavy_all):
 
                             for y in range(len(spectra['m/z array'])):
                                 min_MZ = abs(anymZ - spectra['m/z array'][y])
@@ -191,7 +191,7 @@ def taxlink(all_xls_file: Path,
 
             coverage = 0.0
 
-            for num_mgf,item_mgf in enumerate(mgf_dict_list):
+            for num_mgf, item_mgf in enumerate(mgf_dict_list):
 
                 if max(mgf_spec_score) != 0:
 
@@ -203,9 +203,9 @@ def taxlink(all_xls_file: Path,
 
                         spec_charge = item_mgf['params']['charge'][0]
 
-                        mz_difference_Light = 1.000
+                        # mz_difference_Light = 1.000
 
-                        mz_difference_Heavy = 1.000
+                        # mz_difference_Heavy = 1.000
 
                         mz_difference_Light = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:4])
 

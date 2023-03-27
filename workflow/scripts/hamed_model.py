@@ -200,7 +200,7 @@ def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]):
               help='')
 @click.option('--n_filters',
               type=int,
-              default=2,
+              default=3,
               help='')
 @click.option('--cut_off',
               type=int,
@@ -211,6 +211,8 @@ def run_model(complex_pdb,
               top_xls_file, dock_file, n_models, n_filters, cut_off):
     """
     """
+
+    n_filters -= 1
 
     (xl_files,
      pdb_files,
