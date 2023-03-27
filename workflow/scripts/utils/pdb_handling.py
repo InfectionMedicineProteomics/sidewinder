@@ -134,7 +134,7 @@ def cheetah_pdb_format(pdb1: Path,
 
     path_in = {chains[0]: pdb1, chains[1]: pdb2}
 
-    path_out = {x: output_dir / f'model_{x}.pdb' for x in chains}
+    path_out = {x: output_dir / f'chain_{x}.pdb' for x in chains}
 
     for out_chain, pdb in path_in.items():
 
@@ -145,7 +145,7 @@ def cheetah_pdb_format(pdb1: Path,
 
         seq = seq_from_structure(structure=struct)
 
-        seq_file = output_dir / f'seq_{out_chain}.txt'
+        seq_file = output_dir / f'chain_{out_chain}.txt'
 
         seq_files.append(seq_file)
 

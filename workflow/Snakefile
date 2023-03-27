@@ -15,9 +15,10 @@ __email__ = 'joel.strobaek@gmail.com'
 #       - dock_tmp.pdb / lig_tmp.pdb
 #       - pdb_A/B.pdb
 # - Add some subfolders to the results dir
-#       - supp_files: all_xls.txt, seq_A/B.txt, detected_spectra.txt,
-#                     model_A/B.pdb
+#       - supp_files: all_xls.txt, target/binder_seq.txt, detected_spectra.txt,
+#                     target/binder.pdb
 # - MAKE A BETTER FOLDER STRUCTURE FOR THE OUTPUT
+# - REMOVE ALL THE STUPID HARD CODING!
 
 
 from glob import glob
@@ -67,10 +68,10 @@ rule pdb_handling:
         PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb')
     output:
         PDB = f'{{outdir}}/{{target}}/{{binder}}/complex_AB.pdb',
-        seq_a = f'{{outdir}}/{{target}}/{{binder}}/seq_A.txt',
-        seq_b = f'{{outdir}}/{{target}}/{{binder}}/seq_B.txt',
-        mod_a = f'{{outdir}}/{{target}}/{{binder}}/model_A.pdb',
-        mod_b = f'{{outdir}}/{{target}}/{{binder}}/model_B.pdb'
+        seq_a = f'{{outdir}}/{{target}}/{{binder}}/chain_A.txt',
+        seq_b = f'{{outdir}}/{{target}}/{{binder}}/chain_B.txt',
+        pdb_a = f'{{outdir}}/{{target}}/{{binder}}/chain_A.pdb',
+        pdb_b = f'{{outdir}}/{{target}}/{{binder}}/chain_B.pdb'
     params:
         pdb_handling = 'workflow/scripts/utils/pdb_handling.py',
         outdir = f'{{outdir}}/{{target}}/{{binder}}'
@@ -83,15 +84,16 @@ rule pdb_handling:
         "--output_dir {params.outdir}"
 
 if BLOCK_FV:
-    # TODO: Save process to SQLite DB and make output temporary.
-
+    # TODO:
+    #   - Save process to SQLite DB and make output temporary.
+    #   - ADD IN NON-FV RESIDUE BLOCK (see notebooks/megadock_test.ipynb)
     rule block_pdb:
         input:
             mc_pdb = rules.pdb_handling.input.PDB_a,
-            sc_pdb = rules.pdb_handling.output.mod_a
+            sc_pdb = rules.pdb_handling.output.pdb_a
         output:
-            mod_a = (f'{{outdir}}/{{target}}/{{binder}}/'
-                     f'model_A_blocked.pdb')  # Make temporary later.
+            pdb_a = (f'{{outdir}}/{{target}}/{{binder}}/'
+                     f'chain_A_blocked.pdb')  # Make temporary later.
         params:
             fv_blocking = 'workflow/scripts/mdock-block_pdb.py',
             outdir = f'{{outdir}}/{{target}}/{{binder}}'
@@ -122,26 +124,27 @@ rule seq2xl:
 
 rule megadock:
     input:
-        mod_a = (rules.block_pdb.output.mod_a
-                 if BLOCK_FV else rules.pdb_handling.output.mod_a),
-        mod_b = rules.pdb_handling.output.mod_b
+        pdb_a = (rules.block_pdb.output.pdb_a
+                 if BLOCK_FV else rules.pdb_handling.output.pdb_a),
+        pdb_b = rules.pdb_handling.output.pdb_b
     output:
-        f'{{outdir}}/{{target}}/{{binder}}/model_A-model_B.out'
+        f'{{outdir}}/{{target}}/{{binder}}/megadock.out'
     params:
         megadock = '/usr/local/megadock/megadock-4.1.1/megadock',
-        predictions = 3600,  # Default=2000.
-        mod_a = f'/data/{{target}}/{{binder}}/model_A.pdb',
-        mod_b = f'/data/{{target}}/{{binder}}/model_B.pdb',
-        output = f'/data/{{target}}/{{binder}}/model_A-model_B.out',
-        log = f'/data/{{target}}/{{binder}}/dock.log'
+        predictions = config['docking_samples'],
+        pdb_a = (f'/data/{{target}}/{{binder}}/chain_A_blocked.pdb'
+                 if BLOCK_FV else f'/data/{{target}}/{{binder}}/chain_A.pdb'),
+        pdb_b = f'/data/{{target}}/{{binder}}/chain_B.pdb',
+        output = f'/data/{{target}}/{{binder}}/megadock.out',
+        log = f'/data/{{target}}/{{binder}}/megadock.log'
     container:
         '/srv/data1/home/jo0348st/containers/megadock010.sif'
     threads:
         round(workflow.cores * 0.85)
     shell:
         "{params.megadock} "
-        "-R {params.mod_a} "
-        "-L {params.mod_b} "
+        "-R {params.pdb_a} "
+        "-L {params.pdb_b} "
         "-o {params.output} "
         "-N {params.predictions} "
         "> {params.log}"
@@ -200,7 +203,7 @@ rule modeling:
     params:
         cut_off = config['distance_cut_off'],
         n_top_f = config['num_of_top_filters'],
-        n_docks = 3600,  # Default=1000.
+        n_docks = config['model_samples'],
         modeling_script = 'workflow/scripts/hamed_model.py',
         outdir = f'{{outdir}}/{{target}}/{{binder}}'
     conda:
