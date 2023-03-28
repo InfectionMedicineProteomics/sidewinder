@@ -125,7 +125,7 @@ class block_pdb:
 
                 l = l.strip()
 
-                if l[0:4] != 'ATOM' and l[0:6] != 'HETATM':
+                if l[0:4] not in ['ATOM', 'TER '] and l[0:6] != 'HETATM':
 
                     f_out.write(f'{l}\n')
 
@@ -234,8 +234,6 @@ def block_fv_pdb(multi_chain_pdb, single_chain_pdb, output_dir):
 
     blocker = block_pdb(single_chain_pdb, output_dir)
 
-    block_target = 'FR'  # FR or CDR
-
     index_convert = {}
 
     last_index = 1
@@ -258,11 +256,19 @@ def block_fv_pdb(multi_chain_pdb, single_chain_pdb, output_dir):
 
         for region, index in d['index'].items():
 
-            if region[:-1] in block_target:
+            # Blocks the FR of the Fv region.
+            if 'CDR' not in region[:-1]:
 
                 block = [index_convert[chain][idx] for idx in index]
 
                 block_index.extend(block)
+
+        # Also block the Fc region of current chain.
+        block = [index_convert[chain][idx + 1]
+                 for idx in range(len(fv_index.chains[chain].seq),
+                                  len(fv_index.seq_records[chain]))]
+
+        block_index.extend(block)
 
         block_list.append(blocker.get_resarg(block_index))
 
