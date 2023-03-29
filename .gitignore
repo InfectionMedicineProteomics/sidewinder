@@ -5,5 +5,5 @@ pdb_handler.py
 results
 viewer.ipynb
 *.sif
-config/user_config.yml
+config/user_*.yml
 workflow/scripts/testing.ipynb
