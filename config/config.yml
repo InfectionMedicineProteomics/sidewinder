@@ -3,10 +3,18 @@
 # Default output_dir: 'results/{date}'
 output_dir: '/path/to/output_directory'
 
-input_pdb1: '/path/to/input_pdb_1'
-input_pdb2: '/path/to/input_pdb_2'
+targets_dir: '/path/to/targets_pdb_dir'
+binder_dir: '/path/to/binder_pdb_dir'
 
-input_ms2: '/path/to/input_ms2_file'  # Valid formats: [mzml, mgf]
+ms2_file: '/path/to/input_ms2_file'  # Valid formats: [mzml, mgf]
 
-distance_cut_off: 30  # In Ångström
-num_of_top_filters: 2
+distance_cut_off: 32  # In Ångström
+num_of_top_filters: 3  # Models to keep
+model_samples: 10  # Cheetah-default=10, max=docking_samples
+docking_samples: 2000  # Default 2000
+
+block_antibody_non_CDR: False
+
+# Static configuration (not user specified):
+
+thermoRawFileParser: '/srv/data1/home/jo0348st/src/thermoRawFileParser/ThermoRawFileParser.exe'

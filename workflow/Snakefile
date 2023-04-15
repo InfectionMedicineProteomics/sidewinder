@@ -90,7 +90,6 @@ rule pdb_handling:
 if BLOCK_FV:
     # TODO:
     #   - Save process to SQLite DB and make output temporary.
-    #   - ADD IN NON-FV RESIDUE BLOCK (see notebooks/megadock_test.ipynb)
     rule block_pdb:
         input:
             mc_pdb = rules.pdb_handling.input.PDB_a,
@@ -172,6 +171,7 @@ rule msconvert:
                        #    - if '.mgf': copy existing file to outdir
 
 rule ms2:
+    # TODO: Speed up!
     input:
         mgf = ancient(rules.msconvert.output.mgf),
         xls = ancient(rules.seq2xl.output)
