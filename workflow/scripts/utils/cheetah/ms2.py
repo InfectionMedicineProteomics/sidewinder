@@ -56,7 +56,7 @@ def taxlink(all_xls_file: Path,
 
     fig_threshold = 10  # Set number of figures.
 
-    # Importing top_XLs file.
+    # Importing XLs file.
     with open(all_xls_file, 'r') as f:
 
         all_xls_list = f.read().splitlines()  # Row -> element of the list.
@@ -80,7 +80,7 @@ def taxlink(all_xls_file: Path,
     # Create table:
     c.execute('''CREATE TABLE IF NOT EXISTS MS2Data
                  (XL text, mgf_file text, spectrum_id text, spectrum_num integer, \
-                 delta real, pre_charge integer, H_L integer, fragSc integer, \
+                 delta real, pre_charge integer, H_L text, fragSc integer, \
                  coverage real, covered_Frags text, covered_Mz text, covered_int text,\
                  main_Mz text, main_int text, count integer)''')
 
