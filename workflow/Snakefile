@@ -20,7 +20,7 @@ __email__ = 'joel.strobaek@gmail.com'
 # - MAKE A BETTER FOLDER STRUCTURE FOR THE OUTPUT
 # - REMOVE ALL THE STUPID HARD CODING!
 
-
+import os
 from glob import glob
 from pathlib import Path
 
@@ -38,7 +38,20 @@ config = {k: (v if k not in config_paths else Path(v).resolve()) for k, v in con
 
 OUTDIR_BASE = config['output_dir']
 
-MGF_STEM = config["ms2_file"].stem
+# New folders
+docking_files = 'Docking'
+sample_files = 'Samples'
+txms_files =  'TXMS'
+
+
+
+SAMPLES = glob_wildcards(
+    os.path.join(
+        config['ms2_files'],
+        "{sample}.{extension}"
+    )
+).sample
+# MGF_STEM = config["ms2_file"].stem
 
 OUTDIR = OUTDIR_BASE / MGF_STEM
 
@@ -50,7 +63,7 @@ BINDERS_LIST, = glob_wildcards(f'{config["binders_dir"]}/{{binder}}.pdb')
 
 BLOCK_FV = bool(config['block_antibody_non_CDR'])
 
-MSCONVERT_CMD = (f'cp {{input.ms2}} {{output.mgf}}'
+MSCONVERT_CMD = (f'ln -s {{input.ms2}} {{output.mgf}}'
                  if (config['ms2_file'].suffix.lower() in '.mgf')
                  else f'mono {{params.thermoRawFileParser}} \
                         -i={{input.ms2}} \
@@ -60,25 +73,34 @@ MSCONVERT_CMD = (f'cp {{input.ms2}} {{output.mgf}}'
 
 rule all:
     input:
-        model_output = expand(f'{{outdir}}/{{binder}}/{{target}}/{{files}}',
-                              outdir=OUTDIR,
-                              target=TARGETS_LIST,
-                              binder=BINDERS_LIST,
-                              files=['best_model.pdb', 'best_model_xls.txt'])
+        expand(
+            os.path.join(
+                OUTDIR_BASE, txms_files, 
+                "{MGF_STEM}", 
+                "{binder}", 
+                "{target}", 
+                "{files}"
+             ),
+             MGF_STEM=SAMPLES,
+             binder=BINDERS_LIST,
+             target=TARGETS_LIST,
+             files=['best_model.pdb', 'best_model_xls.txt']
+        )
 
 rule pdb_handling:
     input:
         PDB_a = ancient(f'{config["targets_dir"]}/{{target}}.pdb'),
         PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb')
     output:
-        PDB = f'{{outdir}}/{{binder}}/{{target}}/complex_AB.pdb',
-        seq_a = f'{{outdir}}/{{binder}}/{{target}}/chain_A.txt',
-        seq_b = f'{{outdir}}/{{binder}}/{{target}}/chain_B.txt',
-        pdb_a = f'{{outdir}}/{{binder}}/{{target}}/chain_A.pdb',
-        pdb_b = f'{{outdir}}/{{binder}}/{{target}}/chain_B.pdb'
+
+        PDB = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "complex_AB.pdb"),  ##   f'{{outdir}}/{{binder}}/{{target}}/complex_AB.pdb',
+        seq_a = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_A.txt"), # f'{{outdir}}/{{binder}}/{{target}}/chain_A.txt',
+        seq_b = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_B.txt"),  #f'{{outdir}}/{{binder}}/{{target}}/chain_B.txt',
+        pdb_a = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_A.pdb"),  #f'{{outdir}}/{{binder}}/{{target}}/chain_A.pdb',
+        pdb_b = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_B.pdb"), ##f'{{outdir}}/{{binder}}/{{target}}/chain_B.pdb'
     params:
         pdb_handling = 'workflow/scripts/utils/pdb_handling.py',
-        outdir = f'{{outdir}}/{{binder}}/{{target}}'
+        outdir = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}") ##f'{{outdir}}/{{binder}}/{{target}}'
     conda:
         'envs/biopython_env.yml'
     shell:
@@ -95,11 +117,10 @@ if BLOCK_FV:
             mc_pdb = rules.pdb_handling.input.PDB_a,
             sc_pdb = rules.pdb_handling.output.pdb_a
         output:
-            pdb_a = (f'{{outdir}}/{{binder}}/{{target}}/'
-                     f'chain_A_blocked.pdb')  # Make temporary later.
+            pdb_a = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_A_blocked.pdb")
         params:
             fv_blocking = 'workflow/scripts/mdock-block_pdb.py',
-            outdir = f'{{outdir}}/{{binder}}/{{target}}'
+            outdir = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}")   ##f'{{outdir}}/{{binder}}/{{target}}'
         conda:
             'envs/biopython_env.yml'
         shell:
@@ -113,10 +134,10 @@ rule seq2xl:
         seq_a = rules.pdb_handling.output.seq_a,
         seq_b = rules.pdb_handling.output.seq_b
     output:
-        f'{{outdir}}/{{binder}}/{{target}}/all_xls.txt'
+        os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "all_xls.txt") 
     params:
         seq2xl = 'workflow/scripts/utils/cheetah/seq2xl.py',
-        outdir = f'{{outdir}}/{{binder}}/{{target}}'
+        outdir = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}")   ##f'{{outdir}}/{{binder}}/{{target}}'
     conda:
         'envs/biopython_env.yml'
     shell:
@@ -131,27 +152,25 @@ rule megadock:
                  if BLOCK_FV else rules.pdb_handling.output.pdb_a),
         pdb_b = rules.pdb_handling.output.pdb_b
     output:
-        f'{{outdir}}/{{binder}}/{{target}}/megadock.out'
+        os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "megadock.out")
     params:
         megadock = '/usr/local/megadock/megadock-4.1.1/megadock',
         predictions = config['docking_samples'],
-        pdb_a = (f'{MD_OUT}/{{binder}}/{{target}}/chain_A_blocked.pdb'
-                 if BLOCK_FV
-                 else f'{MD_OUT}/{{binder}}/{{target}}/chain_A.pdb'),
-        pdb_b = f'{MD_OUT}/{{binder}}/{{target}}/chain_B.pdb',
-        output = f'{MD_OUT}/{{binder}}/{{target}}/megadock.out',
-        log = f'{MD_OUT}/{{binder}}/{{target}}/megadock.log'
+        pdb_a = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_A_blocked.pdb") if BLOCK_FV else os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_A.pdb"),
+        pdb_b = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_B.pdb"),
     singularity:
         '/srv/data1/home/jo0348st/containers/megadock010.sif'
     threads:
         round(workflow.cores * 0.85)
+    log:
+        logfile = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", 'megadock.log')
     shell:
         "{params.megadock} "
         "-R {params.pdb_a} "
         "-L {params.pdb_b} "
-        "-o {params.output} "
+        "-o {output} "
         "-N {params.predictions} "
-        "> {params.log}"
+        "> {log.logfile}"
 
 rule msconvert:
     # TODO:
@@ -159,9 +178,9 @@ rule msconvert:
     input:
         ms2 = (config['ms2_file'])
     output:
-        mgf = f'{OUTDIR_BASE}/ms2_convert/{MGF_STEM}.mgf'
+        mgf = os.path.join(OUTDIR_BASE, sample_files, "ms2_convert", "{MGF_STEM}.mgf")
     params:
-        outdir = f'{OUTDIR_BASE}/ms2_convert',
+        outdir = os.path.join(OUTDIR_BASE, sample_files, "ms2_convert")
         thermoRawFileParser = config['thermoRawFileParser']
     conda:
         'envs/mono_env.yml'
@@ -176,13 +195,13 @@ rule ms2:
         mgf = ancient(rules.msconvert.output.mgf),
         xls = ancient(rules.seq2xl.output)
     output:
-        sql = f'{{outdir}}/{{binder}}/{{target}}/ms2_results.sql',
-        img_dir = directory(f'{{outdir}}/{{binder}}/{{target}}/top_spectra'),
-        top_xls = f'{{outdir}}/{{binder}}/{{target}}/top_xls.txt',
-        mgf_filt = f'{{outdir}}/{{binder}}/{{target}}/{MGF_STEM}_filtered.mgf'
+        sql = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "ms2_results.sql"), 
+        img_dir = directory(os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "top_spectra")),  
+        top_xls = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "{MGF_STEM}", "top_xls.txt"),  
+        mgf_filt = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "{MGF_STEM}_filtered.mgf")  
     params:
         ms2_script = 'workflow/scripts/utils/cheetah/ms2.py',
-        outdir = f'{{outdir}}/{{binder}}/{{target}}'
+        outdir = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}")
     conda:
         'envs/pyteomics_env.yml'
     shell:
@@ -202,15 +221,15 @@ rule modeling:
         top_xls = rules.ms2.output.top_xls,
         dock_file = rules.megadock.output
     output:
-        top_model = f'{{outdir}}/{{binder}}/{{target}}/best_model.pdb',
-        top_xls = f'{{outdir}}/{{binder}}/{{target}}/best_model_xls.txt',
-        scores = f'{{outdir}}/{{binder}}/{{target}}/lr_models/scores.csv'
+        top_model = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "best_model.pdb" ), 
+        top_xls = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "best_model_xls.txt"),
+        scores = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}", "lr_models/scores.csv")
     params:
         cut_off = config['distance_cut_off'],
         n_top_f = config['num_of_top_filters'],
         n_docks = config['model_samples'],
         modeling_script = 'workflow/scripts/hamed_model.py',
-        outdir = f'{{outdir}}/{{binder}}/{{target}}'
+        outdir = os.path.join(OUTDIR_BASE, txms_files, "{MGF_STEM}", "{binder}", "{target}")
     conda:
         'envs/biopython_env.yml'
     threads:
