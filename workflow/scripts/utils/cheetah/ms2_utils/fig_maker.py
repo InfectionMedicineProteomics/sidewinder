@@ -1,5 +1,3 @@
-import os
-
 import matplotlib.pyplot as plt
 
 def fig_maker(main_spectra,
@@ -140,11 +138,7 @@ def fig_maker(main_spectra,
 
     # print ("Storing figure: ", str(num_mgf)+xl+".png")
 
-    spec_dir = output_dir / 'top_spectra'
-
-    spec_dir.mkdir(parents=True, exist_ok=True)
-
-    spec_image_file = spec_dir / f'{num_mgf}{xl}.png'
+    spec_image_file = output_dir / f'{num_mgf}{xl}.png'
 
     plt.savefig(spec_image_file, format='png', dpi=600)
 

@@ -5,4 +5,4 @@
 # Removed from command:
 # --singularity-args "--bind $output_dir:/data"
 
-snakemake --use-singularity --use-conda --cores -k "$@"
+snakemake --use-singularity --use-conda --cores 150 "$@"  # Add -k to continue with independant jobs.

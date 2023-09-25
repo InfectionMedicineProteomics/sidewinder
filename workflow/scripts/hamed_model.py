@@ -43,7 +43,7 @@ def modeling(complex_pdb: Path,
             top_xls.append(line.strip())
 
     # Rewriting pdb_A and pdb_B to make sure the ending is correct (TER and END)
-    # megadock cannot produce correct models with wrong ending
+    # megadock cannot produce correct models with wrong ending.
     io = PDBIO()
 
     io.set_structure(partner_A_pdb)
@@ -196,7 +196,7 @@ def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]):
               help='')
 @click.option('--n_models',
               type=int,
-              default=1000,
+              default=10,
               help='')
 @click.option('--n_filters',
               type=int,

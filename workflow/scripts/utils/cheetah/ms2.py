@@ -54,7 +54,7 @@ def taxlink(all_xls_file: Path,
 
     xlinker_mass = xlinker_dict[xlinker_type]
 
-    fig_threshold = 10  # Set number of figures.
+    fig_threshold = 10  # Min n spectra to generate fig.
 
     # Importing XLs file.
     with open(all_xls_file, 'r') as f:
@@ -73,9 +73,9 @@ def taxlink(all_xls_file: Path,
     # Build SQLite3 database.
     sql_db_file = output_dir / 'ms2_results.sql'
 
-    con = sqlite3.connect(sql_db_file)
+    conn = sqlite3.connect(sql_db_file)
 
-    c = con.cursor()
+    c = conn.cursor()
 
     # Create table:
     c.execute('''CREATE TABLE IF NOT EXISTS MS2Data
@@ -92,6 +92,10 @@ def taxlink(all_xls_file: Path,
     mgf_dict_list = list(mgf.read(str(filtered_mgf_file)))
 
     output_file = output_dir / 'detected_spectra.txt'
+
+    spec_dir = output_dir / 'top_spectra'
+
+    spec_dir.mkdir(parents=True, exist_ok=True)
 
     with open(output_file, 'w') as f:
 
@@ -120,10 +124,6 @@ def taxlink(all_xls_file: Path,
 
                 if spec_charge in range (3,9):
 
-                    # mz_difference_Light = 1.000
-
-                    # mz_difference_Heavy = 1.000
-
                     mz_difference_Light = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:4])
 
                     mz_difference_Heavy = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][5:9])
@@ -144,20 +144,23 @@ def taxlink(all_xls_file: Path,
 
                                     mgf_spec_list[num_mz] = spectra
 
-                                    # Intensity-based scoring of the detected peaks.
-                                    if spectra['intensity array'][y] >= maxintensity*3/4:
+                                    # Intensity-based scoring
+                                    # of the detected peaks:
+                                    intensity = spectra['intensity array'][y]
+
+                                    if intensity >= maxintensity*3/4:
 
                                         mgf_spec_score[spec_idx] += 12
 
-                                    elif spectra['intensity array'][y] >= maxintensity/2:
+                                    elif intensity >= maxintensity/2:
 
                                         mgf_spec_score[spec_idx] += 8
 
-                                    elif spectra['intensity array'][y] >= maxintensity/4:
+                                    elif intensity >= maxintensity/4:
 
                                         mgf_spec_score[spec_idx] += 4
 
-                                    elif spectra['intensity array'][y]>=intensity_filter:
+                                    elif intensity >= intensity_filter:
 
                                         mgf_spec_score[spec_idx] += 2
 
@@ -168,19 +171,33 @@ def taxlink(all_xls_file: Path,
                         for num_mz, anymZ in enumerate(mz_heavy_all):
 
                             for y in range(len(spectra['m/z array'])):
+
                                 min_MZ = abs(anymZ - spectra['m/z array'][y])
+
                                 if min_MZ <= delta:
+
                                     maxintensity = max(spectra['intensity array'][0:])
+
                                     mgf_spec_list[num_mz] = spectra
 
-                                    # Intensity-based scoring of the detected peaks.
-                                    if spectra['intensity array'][y] >= maxintensity*3/4:
+                                    # Intensity-based scoring
+                                    # of the detected peaks:
+                                    intensity = spectra['intensity array'][y]
+
+                                    if intensity >= maxintensity*3/4:
+
                                         mgf_spec_score[spec_idx] += 12
-                                    elif spectra['intensity array'][y] >= maxintensity/2:
+
+                                    elif intensity >= maxintensity/2:
+
                                         mgf_spec_score[spec_idx] += 8
-                                    elif spectra['intensity array'][y] >= maxintensity/4:
+
+                                    elif intensity >= maxintensity/4:
+
                                         mgf_spec_score[spec_idx] += 4
-                                    elif spectra['intensity array'][y]>=intensity_filter:
+
+                                    elif intensity >= intensity_filter:
+
                                         mgf_spec_score[spec_idx] += 2
 
             spectrum_id = "NA"
@@ -231,6 +248,7 @@ def taxlink(all_xls_file: Path,
                         if (mz_difference_Light <= delta): # we fixed delta for precursor to 0.01
 
                             heavy_light_flag = 'Light'
+
                             for numz, mz in enumerate(mz_light_all):
 
                                 min_MZ2 = min(abs(mz - y) for y in item_mgf['m/z array'][0:])
@@ -241,7 +259,7 @@ def taxlink(all_xls_file: Path,
 
                                     covered_mz.append(mz_light_all[numz])
 
-                        elif (mz_difference_Heavy <= delta): # we fixed delta for precursor to 0.01
+                        elif (mz_difference_Heavy <= delta):
 
                             heavy_light_flag = 'Heavy'
 
@@ -278,13 +296,13 @@ def taxlink(all_xls_file: Path,
                             delta, pre_charge, H_L, fragSc, coverage, covered_Frags, covered_Mz, covered_int, \
                             main_Mz, main_int, count) VALUES \
                             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" \
-                            ,(xl, str(all_xls_file), spectrum_id, spectrum_num, delta, spec_charge, heavy_light_flag, \
+                            ,(xl, str(filtered_mgf_file), spectrum_id, spectrum_num, delta, spec_charge, heavy_light_flag, \
                             max(mgf_spec_score), coverage, ",".join(str(x) for x in covered_Frags), \
                             ",".join(str(w) for w in covered_mz), ",".join(str(x) for x in covered_intensity), \
                             ",".join(str(x) for x in main_spectra), ",".join(str(x) for x in main_intensity), \
                             len(covered_Frags) ) )
 
-                            con.commit()
+                            conn.commit()
 
                         if len(covered_mz) >= fig_threshold:
 
@@ -294,11 +312,9 @@ def taxlink(all_xls_file: Path,
                                                 covered_mz,
                                                 p1,
                                                 p2,
-                                                xl, num_mgf, delta, output_dir)
+                                                xl, num_mgf, delta, spec_dir)
 
-    con.close()
-
-    return sql_db_file
+    return conn
 
 @click.command()
 @click.version_option(version='1.0a')
@@ -308,10 +324,15 @@ def taxlink(all_xls_file: Path,
 @click.option('--xl_file',
               required=True,
               type=click.Path(exists=True, path_type=Path), help='')
+@click.option('--x_linker',
+              required=False, default=1, type=int,
+              help='Options: 1=DSS, 2=DSG, 3=EGS')
 @click.option('--output_dir',
               required=True,
               type=click.Path(exists=True, path_type=Path), help='')
-def run_ms2_analysis(mgf_file: Path, xl_file: Path, output_dir: Path) -> Path:
+def run_ms2_analysis(mgf_file: Path,
+                     xl_file: Path,
+                     x_linker: int, output_dir: Path) -> Path:
     """...
 
     ...
@@ -324,23 +345,22 @@ def run_ms2_analysis(mgf_file: Path, xl_file: Path, output_dir: Path) -> Path:
 
     intensity = 0.0
 
-    x_linker = 1
-
     ptm = "1"
 
-    sql_db_path = taxlink(all_xls_file=xl_file,
+    sql_db_conn = taxlink(all_xls_file=xl_file,
                           mgf_file=mgf_file,
                           output_dir=output_dir,
                           delta=delta,
                           intensity_filter=intensity,
                           xlinker_type=x_linker, ptm_type=ptm)
 
-    engine = create_engine(f'sqlite:///{str(sql_db_path)}')
-
     # Save the XLs that have the most support from the MS2 spectra.
-    query = 'SELECT DISTINCT XL FROM MS2Data WHERE count>10 ORDER BY count DESC'
+    query = ('SELECT DISTINCT XL FROM MS2Data '
+             'WHERE count>=10 ORDER BY count DESC')
 
-    ms2_xls_df = pandas.read_sql_query(query, engine)
+    ms2_xls_df = pandas.read_sql_query(query, sql_db_conn)
+
+    sql_db_conn.close()
 
     top_xls_file = output_dir / 'top_xls.txt'
 

@@ -50,12 +50,12 @@ def megadock_run(pdb_a, pdb_b, dock_file, model_number, output_dir):
     singularity_command = ['singularity',
                            'exec',
                            '--bind',
-                           f'{output_dir}:/data',
+                           f'/{str(output_dir).split("/")[1]}',
                            f'{container}',
                            decoygen,
-                           '/data/lig_tmp.pdb',
-                           f'/data/{pdb_b.name}',
-                           f'/data/{dock_file.name}', f'{model_number}']
+                           f'{output_dir}/lig_tmp.pdb',
+                           f'{pdb_b}',
+                           f'{dock_file}', f'{model_number}']
 
     subprocess.run(singularity_command, check=True)
 
