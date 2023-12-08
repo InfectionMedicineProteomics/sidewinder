@@ -327,12 +327,14 @@ def taxlink(all_xls_file: Path,
 @click.option('--x_linker',
               required=False, default=1, type=int,
               help='Options: 1=DSS, 2=DSG, 3=EGS')
+@click.option('--mass_delta_cutoff', type=float, default=0.01, help='')
 @click.option('--output_dir',
               required=True,
               type=click.Path(exists=True, path_type=Path), help='')
 def run_ms2_analysis(mgf_file: Path,
                      xl_file: Path,
-                     x_linker: int, output_dir: Path) -> Path:
+                     x_linker: int,
+                     mass_delta_cutoff: float, output_dir: Path) -> Path:
     """...
 
     ...
@@ -341,7 +343,7 @@ def run_ms2_analysis(mgf_file: Path,
     ----------
 
     """
-    delta = 0.01  # 0.01 or 0.05.
+    delta = mass_delta_cutoff  # 0.01 or 0.05.
 
     intensity = 0.0
 

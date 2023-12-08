@@ -189,15 +189,14 @@ def rec_to_xls(rec_list,
               type=click.Path(exists=True, path_type=Path), help='')
 @click.option('--output_dir',
               required=True,
-              type=click.Path(exists=True, path_type=Path),
-              default=None, help='')
-@click.option('--validation_pdb',
+              type=click.Path(exists=True, path_type=Path), help='')
+@click.option('--validation_fasta',
               required=False,
               type=click.Path(exists=True, path_type=Path),
               default=None,
-              help=(f'Used to validate the XLs assigned from pdb_file2, ',
-                    f'if the associated PDB contains a subset structure ',
-                    f'from the validation_pdb.'))
+              help=str(f'Used to validate the XLs assigned from pdb_file2, '
+                       f'if the associated PDB contains a subset structure '
+                       f'from the validation_pdb.'))
 @click.option('--max_peptide_length',
               required=False,
               type=int,
@@ -205,7 +204,7 @@ def rec_to_xls(rec_list,
 def seq2xl(pdb_file1: Path,
            pdb_file2: Path,
            output_dir: Path,
-           max_peptide_length: int, validation_pdb: Path = None):
+           max_peptide_length: int, validation_fasta: Path):
     """Generate all inter-XLs between 2 input aa-seqs.
 
     Heavily based on code authored by Hamed Khakzad. Only considers
@@ -239,9 +238,9 @@ def seq2xl(pdb_file1: Path,
     # Validate the XLs assigned to xls_2 based on XLs generated for a
     # superset structure of the protein. Useful if not the entire protein
     # is being targeted (to make sure there are no in silico artifacts).
-    if validation_pdb:
+    if validation_fasta:
 
-        val_rec = protein_to_rec_list(validation_pdb)
+        val_rec = protein_to_rec_list(validation_fasta, 'fasta')
 
         val_xls = rec_to_xls(val_rec, max_peptide_length=pep_len)
 

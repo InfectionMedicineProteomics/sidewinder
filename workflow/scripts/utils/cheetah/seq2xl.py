@@ -10,6 +10,8 @@ __email__ = 'joel.strobaek@gmail.com'
 # - Generate the tryptic peptides separately for the two files and then loop
 #   through once and print them (instead of rerunning the kojak generator
 #   with every peptide of seq 1); would make the code neater (I think).
+# - Also, I need to split the truncated sequences to avoid getting in silico
+#   artifacts that are not consistent with the biological data.
 
 
 from pathlib import Path
@@ -112,6 +114,18 @@ def kojak_format(pep_1: str,
 
         return f'-.{pep_1}({str(k_pos_1)})--{pep_2}({str(k_pos_2)}).-'
 
+def check_dimerism(seq):
+
+    mid_idx = int(len(seq) / 2)
+
+    if seq[:mid_idx] == seq[mid_idx:]:
+
+        return seq[:mid_idx]
+
+    else:
+
+        return seq
+
 
 @click.command()
 @click.version_option(version='1.0')
@@ -131,12 +145,22 @@ def kojak_format(pep_1: str,
     '--output_dir',
     required=True,
     type=click.Path(exists=True, path_type=Path),
+    default=None,
     help=''
 )
-def seq2xl(seq_file1: Path, seq_file2: Path, output_dir: Path) -> Path:
+@click.option(
+    '--validate',
+    required=False,
+    type=click.Path(exists=True, path_type=Path),
+    help=''
+)
+def seq2xl(seq_file1: Path,
+           seq_file2: Path,
+           output_dir: Path, validate: Path = None) -> Path:
     """Generate all inter-XLs between 2 input aa-seqs.
 
-    Heavily based on code authored by Hamed Khakzad.
+    Heavily based on code authored by Hamed Khakzad. Only considers
+    tryptic digests in current iteration.
 
     Parameters
     ----------
@@ -147,7 +171,7 @@ def seq2xl(seq_file1: Path, seq_file2: Path, output_dir: Path) -> Path:
 
     """
 
-    pep_len = 4
+    pep_len = 4  # Ignore tryptic peptides shorter than this.
 
     kojak_list = []
 
@@ -163,6 +187,11 @@ def seq2xl(seq_file1: Path, seq_file2: Path, output_dir: Path) -> Path:
         seq_2 = f2.read().strip()
 
     xl_file = output_dir / 'all_xls.txt'  # All XLs output file.
+
+    # Check for dimers and only preserve single-sequence if found:
+    # seq_1 = check_dimerism(seq_1)
+
+    # seq_2 = check_dimerism(seq_2)
 
     with open(xl_file, 'w') as f:
 
@@ -192,20 +221,20 @@ def seq2xl(seq_file1: Path, seq_file2: Path, output_dir: Path) -> Path:
 
                                     # Get kojak formatted string.
                                     kojak_xl = kojak_format(pep_1=pep_1,
-                                        k_pos_1=K_pos_1,
-                                        pep_2=pep_2,
-                                        k_pos_2=K_pos_2)
+                                                            k_pos_1=K_pos_1,
+                                                            pep_2=pep_2,
+                                                            k_pos_2=K_pos_2)
 
                                     # Get swapped kojak formatted string.
-                                    kojak_xl_swap = kojak_format(pep_1=pep_1,
-                                        k_pos_1=K_pos_1,
-                                        pep_2=pep_2,
-                                        k_pos_2=K_pos_2,
-                                        swap_order=True)
+                                    kojak_xl_rev = kojak_format(pep_1=pep_1,
+                                                                k_pos_1=K_pos_1,
+                                                                pep_2=pep_2,
+                                                                k_pos_2=K_pos_2,
+                                                                swap_order=True)
 
                                     # Add unique strings to list and print.
                                     if ((kojak_xl not in kojak_list) and
-                                        (kojak_xl_swap not in kojak_list)):
+                                        (kojak_xl_rev not in kojak_list)):
 
                                         kojak_list.append(kojak_xl)
 
