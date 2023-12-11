@@ -6,4 +6,5 @@ results
 viewer.ipynb
 *.sif
 config/user_*.yml
+config/entries.csv
 workflow/scripts/testing.ipynb
