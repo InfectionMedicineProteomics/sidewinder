@@ -27,6 +27,7 @@ import os
 from glob import glob
 from pathlib import Path
 
+import pandas as pd
 from snakemake.utils import min_version
 
 
@@ -74,9 +75,11 @@ col_sample = config.get('col_sample', 'sample')
 
 df = pd.read_csv(table_file)
 
-TARGET_LIST, BINDER_LIST, SAMPLES = df.values.T
+BINDERS_LIST, TARGETS_LIST, SAMPLES = df.values.T
 
+BEST_PDB = ['best_model.pdb'] * len(BINDERS_LIST)
 
+BEST_TXT = ['best_model_xls.txt'] * len(BINDERS_LIST)
 
 
 rule all:
@@ -87,20 +90,35 @@ rule all:
                 "{MGF_STEM}",
                 "{binder}",
                 "{target}",
-                "{files}"
+                "{best_pdb}"
              ),
              zip,
              MGF_STEM=SAMPLES,
              binder=BINDERS_LIST,
              target=TARGETS_LIST,
-             files=['best_model.pdb', 'best_model_xls.txt']
+             best_pdb=BEST_PDB
+        ),
+        expand(
+            os.path.join(
+                OUTDIR_BASE, txms_files,
+                "{MGF_STEM}",
+                "{binder}",
+                "{target}",
+                "{best_txt}"
+             ),
+             zip,
+             MGF_STEM=SAMPLES,
+             binder=BINDERS_LIST,
+             target=TARGETS_LIST,
+             best_txt=BEST_TXT
         )
 
 rule pdb_handling:
     input:
-        PDB_a = ancient(f'{config["targets_dir"]}/{{target}}.pdb'),
-        # PDB_a = ancient(lambda wildcards: config["targets_dir"]  + '/' + wildcards.target + '.pdb'),
-        PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb')
+        # PDB_a = ancient(f'{config["targets_dir"]}/{{target}}.pdb'),
+        PDB_a = lambda wildcards: str(config["targets_dir"])  + '/' + wildcards.target + '.pdb',
+        # PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb'),
+        PDB_b = lambda wildcards: str(config["binders_dir"])  + '/' + wildcards.binder + '.pdb'
     output:
         PDB = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "complex_AB.pdb"),  ##   f'{{outdir}}/{{binder}}/{{target}}/complex_AB.pdb',
         seq_a = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "chain_A.txt"), # f'{{outdir}}/{{binder}}/{{target}}/chain_A.txt',
@@ -226,8 +244,8 @@ rule msconvert:
 rule ms2:
     # TODO: Speed up!
     input:
-        mgf = ancient(rules.msconvert.output.mgf),
-        xls = ancient(rules.seq2xl.output)
+        mgf = rules.msconvert.output.mgf,
+        xls = rules.seq2xl.output
     output:
         sql = os.path.join(OUTDIR_BASE,
                            txms_files,
