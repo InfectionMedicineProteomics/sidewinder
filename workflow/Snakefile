@@ -47,23 +47,36 @@ docking_files = 'docking'
 sample_files = 'samples'
 txms_files =  'txms'
 
-SAMPLES = glob_wildcards(
-    os.path.join(
-        config['ms2_files'],
-        "{sample}.{extension}"
-    )
-).sample
+# SAMPLES = glob_wildcards(
+#     os.path.join(
+#         config['ms2_files'],
+#         "{sample}.{extension}"
+#     )
+# ).sample
 # MGF_STEM = config["ms2_file"].stem
 
 #OUTDIR = OUTDIR_BASE / MGF_STEM
 
 #MD_OUT = f'/data/{MGF_STEM}'
 
-TARGETS_LIST, = glob_wildcards(f'{config["targets_dir"]}/{{target}}.pdb')
+# TARGETS_LIST, = glob_wildcards(f'{config["targets_dir"]}/{{target}}.pdb')
 
-BINDERS_LIST, = glob_wildcards(f'{config["binders_dir"]}/{{binder}}.pdb')
+# BINDERS_LIST, = glob_wildcards(f'{config["binders_dir"]}/{{binder}}.pdb')
 
 BLOCK_FV = bool(config['block_antibody_non_CDR'])
+
+
+table_file = config.get('table_file', 'config/entries.csv')
+
+col_antigen = config.get('col_antigen', 'antigen')
+col_antibody = config.get('col_antibody', 'antibody')
+col_sample = config.get('col_sample', 'sample')
+
+df = pd.read_csv(table_file)
+
+TARGET_LIST, BINDER_LIST, SAMPLES = df.values.T
+
+
 
 
 rule all:
@@ -76,6 +89,7 @@ rule all:
                 "{target}",
                 "{files}"
              ),
+             zip,
              MGF_STEM=SAMPLES,
              binder=BINDERS_LIST,
              target=TARGETS_LIST,
@@ -85,6 +99,7 @@ rule all:
 rule pdb_handling:
     input:
         PDB_a = ancient(f'{config["targets_dir"]}/{{target}}.pdb'),
+        # PDB_a = ancient(lambda wildcards: config["targets_dir"]  + '/' + wildcards.target + '.pdb'),
         PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb')
     output:
         PDB = os.path.join(OUTDIR_BASE, docking_files, "{binder}", "{target}", "complex_AB.pdb"),  ##   f'{{outdir}}/{{binder}}/{{target}}/complex_AB.pdb',
