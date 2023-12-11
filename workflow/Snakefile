@@ -144,8 +144,8 @@ rule seq2xl:
         'envs/biopython_env.yml'
     shell:
         "python3 {params.seq2xl} "
-        "--seq_file1 {input.PDB_a} "
-        "--seq_file2 {input.PDB_b} "
+        "--pdb_file1 {input.PDB_a} "
+        "--pdb_file2 {input.PDB_b} "
         "--output_dir {params.outdir}"
 
 rule megadock:
@@ -234,7 +234,8 @@ rule ms2:
                                 "{target}", "{MGF_STEM}_filtered.mgf")
     params:
         ms2_script = 'workflow/scripts/utils/cheetah/ms2.py',
-        mass_delta_cutoff = 0.01
+        x_linker = config['x_linker'],
+        mass_delta_cutoff = 0.01,
         outdir = os.path.join(OUTDIR_BASE,
                               txms_files, "{MGF_STEM}", "{binder}", "{target}")
     conda:
