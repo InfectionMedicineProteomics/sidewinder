@@ -22,6 +22,9 @@ __email__ = 'joel.strobaek@gmail.com'
 # - Refactor the scripts and workflow to actually make it modular...
 #       - Many of the steps are interwoven in the current itteration,
 #         which (e.g.) inhibits an easy change of docking software
+# - SAVE THE FILTERED MGF IN samples/filtered_mgf/
+# - RENAME THE megadock.out FILE?
+# - FIX THE MEGADOCK BLOCKING SCRIPT TO BE A BIT MORE FLEXIBLE (+/- few AAs)
 
 import os
 from glob import glob
