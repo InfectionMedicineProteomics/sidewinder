@@ -6,4 +6,4 @@
 # --singularity-args "--bind $output_dir:/data"
 
 # Add -k to continue with independant jobs.
-snakemake --use-singularity --singularity-args "--bind /srv/data1" --use-conda --rerun-triggers mtime --cores 150 "$@"
+snakemake --use-singularity --singularity-args "--bind /srv/data1" --use-conda --rerun-triggers mtime --cores 100 "$@"
