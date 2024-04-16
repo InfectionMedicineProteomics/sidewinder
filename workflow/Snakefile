@@ -269,7 +269,7 @@ rule ms2:
                                 "{binder}",
                                 "{target}", "{MGF_STEM}_filtered.mgf")
     params:
-        ms2_script = 'workflow/scripts/utils/cheetah/ms2.py',
+        ms2_script = 'workflow/scripts/ms2.py',
         x_linker = config['x_linker'],
         mass_delta_cutoff = 0.01,
         outdir = os.path.join(OUTDIR_BASE,
@@ -311,7 +311,7 @@ rule modeling:
         cut_off = config['distance_cut_off'],
         n_top_f = config['num_of_top_filters'],
         n_docks = config['model_samples'],
-        modeling_script = 'workflow/scripts/hamed_model.py',
+        modeling_script = 'workflow/scripts/cheetah-model.py',
         outdir = os.path.join(OUTDIR_BASE,
                               txms_files, "{MGF_STEM}", "{binder}", "{target}")
     conda:

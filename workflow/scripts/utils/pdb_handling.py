@@ -13,46 +13,48 @@ __email__ = 'joel.strobaek@gmail.com'
 
 from pathlib import Path
 from subprocess import Popen, PIPE
-from typing import Tuple
-import warnings
+from typing import List
 
 from Bio.PDB import PDBParser, PPBuilder, Structure
 import click
 
 
-def parse_pdb(pdb: Path, structure_id: str) -> Structure.Structure:
-    """Get structure from specified PDB file.
+def parse_pdb(pdb: Path,
+              structure_id: str,
+              suppress_warnings: bool = True) -> Structure.Structure:
+    """Parses a PDB file using Bio.PDB and returns the parsed structure.
 
-    ...
+    Args:
+        pdb (Path): Path to the PDB file to be parsed.
+        structure_id (str): Identification string for the structure within the PDB file.
+        suppress_warnings (bool): Suppress parsing warnings (for efficiency). Defaults to True.
 
-    Parameters
-    ----------
-    pdb : pathlib.Path
-    structure_id : str
+    Returns:
+        Structure.Structure: A Bio.PDB Structure object containing the parsed data.
 
-    Returns
-    -------
-    Bio.PDB.Structure.Structure object
+    Raises:
+        IOError: If the specified PDB file cannot be found or parsed.
+        ValueError: If the structure_id is not found within the PDB file.
     """
-
-    pdb_parser = PDBParser(QUIET=True)
+    pdb_parser = PDBParser(QUIET=suppress_warnings)
 
     return pdb_parser.get_structure(structure_id, pdb)
 
 def seq_from_structure(structure: Structure.Structure) -> str:
-    """Get sequence from structure object.
+    """Extracts the amino acid sequence from a Bio.PDB Structure object.
 
-    ...
+    This function iterates through the chains and peptides within a Bio.PDB Structure
+    object and constructs the full amino acid sequence as a string.
 
-    Parameters
-    ----------
+    Args:
+        structure (Structure.Structure): A Bio.PDB Structure object to extract the sequence from.
 
+    Returns:
+        str: The full amino acid sequence as a single string.
 
-    Returns
-    -------
-
+    Raises:
+        ValueError: If any non-standard amino acid residues are encountered.
     """
-
     pp_builder = PPBuilder()
 
     seq_list = []
@@ -65,26 +67,38 @@ def seq_from_structure(structure: Structure.Structure) -> str:
 
     return ''.join(seq_list)
 
-def close_pipes(pipes: list) -> None:
-    """Close each listed pipe.
+def close_pipes(pipes: List[Popen]) -> None:
+    """Closes the standard output streams of a list of Popen process objects.
 
-    ...
+    This function facilitates graceful termination of process pipelines by closing
+    the standard output streams of the specified processes, allowing them to receive
+    SIGPIPE signals if upstream communication terminates.
 
-    Parameters
-    ----------
+    Args:
+        pipes (List[Popen]): A list of Popen objects representing processes in a pipeline.
 
-
-    Returns
-    -------
-
+    Raises:
+        TypeError: If any elements in the pipes list are not Popen objects.
+        ValueError: If any of the Popen objects have already terminated.
     """
-
     for p in pipes:
 
         p.stdout.close()
 
+@click.callback  # Not sure this is correct.
 def mkdir(context, param, value: Path) -> Path:
+    """Creates a directory, ensuring parent directories exist.
 
+    Args:
+        context (click.Context): The Click context object for the current command.
+            (Not directly used within this function)
+        param (click.Parameter): The Click parameter object for the directory option.
+            (Not directly used within this function)
+        value (Path): The path to the directory to be created.
+
+    Returns:
+        Path: The created directory path as a Path object.
+    """
     value.mkdir(exist_ok=True, parents=True)
 
     return value
@@ -111,21 +125,33 @@ def mkdir(context, param, value: Path) -> Path:
     callback=mkdir,
     help='Output directory'
 )
-def cheetah_pdb_format(pdb1: Path,
-                       pdb2: Path, output_dir: Path):
-    """...
+def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
+    """Cleans and formats two PDB files, extracts amino acid sequences, and creates a combined PDB.
 
-    ...
+    This function performs the following steps:
 
-    Parameters
-    ----------
+    1. Parses the input PDB files using Bio.PDB.
+    2. Extracts the amino acid sequences from each parsed structure.
+    3. Cleans and formats each PDB file using pdb-tools (https://github.com/haddocking/pdb-tools):
+       - Retains only coordinates using pdb_keepcoord.
+       - Renumbers residues using pdb_reres.
+       - Extracts specified chains using pdb_chain.
+       - Tidies the PDB file using pdb_tidy.
+    4. Merges the cleaned and formatted PDB files using pdb_merge.
+    5. Renumbers residues again and tidies the merged PDB file.
+    6. Writes the final combined PDB file to `output_dir/complex_AB.pdb`.
+    7. Writes the extracted amino acid sequences to text files in the output directory.
 
+    Args:
+        pdb1 (Path): Path to the first PDB file.
+        pdb2 (Path): Path to the second PDB file.
+        output_dir (Path): Path to the output directory for results.
 
-    Returns
-    -------
-
+    Raises:
+        IOError: If there are errors reading or writing PDB files.
+        subprocess.CalledProcessError: If any `pdb_tools` commands fail.
+        ValueError: If unexpected output is encountered from `pdb_tools`.
     """
-
     chains = ('A', 'B')
 
     output_pdb = output_dir / 'complex_AB.pdb'

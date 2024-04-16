@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""Modifies a PDB file for targeted docking with MegaDock, based on a MegaDock
+associated script composed by the MegaDock author(s)."""
+
+__author__ = 'Joel Ströbaek'
+__email__ = 'joel.strobaek@gmail.com'
+
 
 import copy
 import shutil
@@ -18,7 +24,17 @@ warnings.simplefilter('ignore', BiopythonParserWarning)
 
 @dataclass
 class block_pdb:
-    """Class for blocking the input receptor for MegaDock"""
+    """Class for blocking specific residues in a receptor PDB file for MegaDock.
+
+    This class generates a modified PDB file where specified residues are
+    renamed to "BLK" to exclude them from docking calculations, effectively
+    focusing the docking on the remaining "active" residues.
+
+    Args:
+        receptor (Path): Path to the receptor PDB file.
+        output_dir (Path, optional): Path to the output directory. Defaults to
+            Path.cwd() / 'megadock_out'.
+    """
     receptor: Path
 
     output_dir: Path = Path.cwd() / 'megadock_out'
@@ -46,7 +62,21 @@ class block_pdb:
         # self.ligand_chains = get_chains(self.ligand.stem, self.ligand)
 
     def get_resarg(self, res_index: List[int]) -> str:
+        """Formats a string of residue indices for blocking.
 
+        This function takes a list of residue indices to be blocked and constructs a string
+        suitable for use as a MegaDock blocking argument. It compactly represents consecutive
+        blocks as ranges (e.g., "1-4") and separates non-consecutive blocks with commas.
+
+        Args:
+            res_index (List[int]): A list of residue indices to be blocked.
+
+        Returns:
+            str: A string representing the residue blocks in a format like "1-4,7,10-12".
+
+        Raises:
+            ValueError: If the input list is not sorted.
+        """
         n_seq = []
 
         res_arg_list = []
@@ -86,7 +116,21 @@ class block_pdb:
         return ','.join(res_arg_list)
 
     def block_receptor(self, chain: str, res_block: str):
+        """Creates a modified PDB file with specified residues renamed to "BLK" for MegaDock blocking.
 
+        This function generates a new PDB file where residues within the provided `res_block`
+        are renamed to "BLK" to exclude them from docking calculations. It operates on a
+        specific chain within the receptor PDB file associated with this class instance.
+
+        Args:
+            chain (str): The letter of the chain to be modified (e.g., "A").
+            res_block (str): A string representing the residue indices or blocks to be blocked,
+                in a format like "1-4,7,10-12".
+
+        Raises:
+            ValueError: If the chain ID is not found in the receptor PDB file.
+            FileNotFoundError: If there are errors reading or writing PDB files.
+        """
         unlink_prev = False
 
         if self.receptor_blocked is not None:
@@ -156,8 +200,18 @@ class block_pdb:
 
 @dataclass
 class fv_indexing:
-    """..."""
+    """Class for indexing CDR and FR regions within an Fv PDB file.
 
+    This class parses an Fv PDB file and identifies the residue indices
+    belonging to the Complementarity-Determining Regions (CDRs) and
+    Framework Regions (FRs). It employs the abnumber package to handle
+    different numbering schemes (Chothia, IMGT, or Kabat).
+
+    Args:
+        fv (Path): Path to the Fv PDB file.
+        scheme (Literal['chothia', 'imgt', 'kabat'], optional): Numbering scheme to
+            use. Defaults to 'chothia'.
+    """
     fv: Path
 
     scheme: Literal['chothia', 'imgt', 'kabat'] = 'chothia'
@@ -221,9 +275,36 @@ class fv_indexing:
               required=True,
               type=click.Path(path_type=Path),
               help='Path to output directory')
-def block_fv_pdb(multi_chain_pdb, single_chain_pdb, output_dir):
-    """..."""
+def block_fv_pdb(multi_chain_pdb: Path,
+                 single_chain_pdb: Path, output_dir: Path):
+    """Blocks residues in a single-chain Fv PDB file for MegaDock, focusing on CDRs.
 
+    This function prepares a PDB file for MegaDock by blocking specific residues
+    to restrict docking to the Complementarity-Determining Regions (CDRs).
+    It involves the following steps:
+
+    1. Extracts CDR and FR indices from the multi-chain PDB file using the
+       fv_indexing class, enabling distinction between heavy and light chains.
+    2. Constructs a block_pdb object for the single-chain PDB file.
+    3. Generates a list of residue indices to block, including FRs and the Fc region.
+    4. Uses the block_pdb object to create a modified PDB file with blocked residues.
+    5. Saves the modified PDB file as "chain_A_blocked.pdb" in the specified output directory.
+
+    Args:
+        multi_chain_pdb (Path): Path to the original multi-chain Fv PDB file,
+            required for CDR annotation.
+        single_chain_pdb (Path): Path to the single-chain Fv PDB file to be modified.
+        output_dir (Path): Path to the output directory for the modified PDB file.
+
+    Returns:
+        None
+
+    Raises:
+        FileNotFoundError: If any of the specified input PDB files cannot be found.
+        ValueError: If invalid residue indices are encountered during blocking.
+        OSError: If there are errors creating directories or copying files.
+        click.ClickException: If invalid command-line arguments are provided.
+    """
     multi_chain_pdb = multi_chain_pdb.resolve()
 
     single_chain_pdb = single_chain_pdb.resolve()

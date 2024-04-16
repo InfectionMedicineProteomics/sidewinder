@@ -1,13 +1,49 @@
+#!/usr/bin/env python3
+
+
+from pathlib import Path
+from typing import List
+
 import matplotlib.pyplot as plt
 
-def fig_maker(main_spectra,
-              main_intensity,
-              covered_frags,
-              covered_mz,
-              peptide1, peptide2, xl, num_mgf, delta, output_dir):
-    """
-    """
 
+def fig_maker(main_spectra: List[float],
+              main_intensity: List[float],
+              covered_frags: List[str],
+              covered_mz: List[float],
+              peptide1: str,
+              peptide2: str,
+              xl: str,
+              num_mgf: str,
+              delta: float,
+              output_dir: Path):
+    """Generates a plot visualizing identified fragments for a cross-linked peptide.
+
+    This function takes information about the MS/MS spectrum, identified
+    fragment ions, cross-linked peptides, and other analysis parameters, and
+    creates a plot to visualize the matched fragments. The plot includes:
+
+    - The original MS/MS spectrum (in yellow).
+    - Identified fragment ions for the first peptide (in red).
+    - Identified fragment ions for the second peptide (in blue).
+    - Identified fragment ions potentially from both peptides (in green).
+    - Fragment ion labels are displayed next to their corresponding m/z values.
+
+    The plot is saved as a PNG image file named after the MGF spectrum number
+    and the cross-link sequence.
+
+    Args:
+        main_spectra (List[float]): List of m/z values from the MS/MS spectrum.
+        main_intensity (List[float]): List of intensity values from the MS/MS spectrum.
+        covered_frags (List[str]): List of identified fragment ion sequences.
+        covered_mz (List[float]): List of m/z values for the identified fragment ions.
+        peptide1 (str): Amino acid sequence of the first peptide in the cross-link.
+        peptide2 (str): Amino acid sequence of the second peptide in the cross-link.
+        xl (str): The cross-linked peptide sequence in Kojak format.
+        num_mgf (str): The MGF spectrum number (used for naming the output file).
+        delta (float): The mass tolerance used for matching fragment ions.
+        output_dir (Path): Path to the directory where the plot will be saved.
+    """
     plt.switch_backend('agg')
 
     plot_mz_list = []
@@ -32,9 +68,9 @@ def fig_maker(main_spectra,
 
     plot_p1p2_frag = []
 
-    for y_num,ymz in enumerate(covered_mz):
+    for y_num, ymz in enumerate(covered_mz):
 
-        for mz_num,anymz in enumerate(main_spectra):
+        for mz_num, anymz in enumerate(main_spectra):
 
             min_MZ = abs(anymz - ymz)
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # TODO:
 # - Look into comment:
 #       "# Calculating M heavy (DSS_D12)", is this hardcoding DSS despite prev.
@@ -11,23 +13,21 @@ from pyteomics import mass
 def fragments(peptide: str, charge: int) -> Tuple[List[str], List[float]]:
     """Generate peptide fragments.
 
-    Generate all possible m/z for peptide b and y ions of input charge,
-    using the pyteomics mass.fast_mass function to calculate peptide mass.
+    This function generates all possible b and y ion fragments for a given
+    peptide sequence and charge state. It utilizes the
+    `pyteomics.mass.fast_mass` function to calculate the mass of each fragment,
+    considering the mass of cysteine modifications (57.021464 Da).
 
-    Authored by Joel Ströbaek.
+    Args:
+        peptide (str): The amino acid sequence of the peptide.
+        charge (int): The charge state of the peptide.
 
-    Args
-    ----
-    peptide (str): The amino acid sequence of the peptide.
-    charge (int): The charge state of the peptide.
-
-    Returns
-    -------
-    Tuple[List[str], List[float]]: A tuple containing two lists,
-        a list of peptide fragments (in the order of b1, y1, b2, ... yN)
-        and their corresponding m/z values.
+    Returns:
+        Tuple[List[str], List[float]]: A tuple containing two lists:
+            - A list of fragment ion names (in the order of b1, y1, b2, ...,
+            yN).
+            - A list of corresponding m/z values for the fragments.
     """
-
     b_frag = [peptide[:i] for i in range(1, len(peptide))]
 
     b_ions = [mass.fast_mass(frag,
@@ -44,20 +44,23 @@ def fragments(peptide: str, charge: int) -> Tuple[List[str], List[float]]:
             [x for tuples in zip(b_ions, y_ions) for x in tuples])
 
 def calc_ptm_mass(ptm_type: str, peptide: str) -> float:
-    """...
+    """Calculates the mass shift due to a PTM applied to a peptide.
 
-    Authored by Joel Ströbaek.
+    This function takes a PTM type (as a string) and a peptide sequence and
+    returns the total mass difference caused by the PTMs on that peptide. It
+    uses a predefined dictionary to map PTM types to their mass shifts and
+    amino acid targets.
 
-    Args
-    ----
-    ptm_type : str
-    peptide : str
+    Currently, this function only supports unmodified peptides (ptm_type="1").
 
-    Returns
-    -------
-    float
+    Args:
+        ptm_type (str): The type of PTM applied (e.g., "1" for unmodified).
+        peptide (str): The amino acid sequence of the peptide.
+
+    Returns:
+        float: The total mass shift caused by PTMs on the peptide (0 for
+        unmodified).
     """
-
     ptm_dict = {"1": (57.021464, "C"),
                 "2": (-79.966, "Y"),
                 "3": (-79.966, "T"),
@@ -77,23 +80,36 @@ def calc_ptm_mass(ptm_type: str, peptide: str) -> float:
 
     return 0 + (ptm_mass * ptm_count)
 
-def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str):
-    """...
+def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str) -> Tuple:
+    """Generates theoretical fragment ions for a cross-linked peptide.
 
-    Input should be a XL in kojak format.
-    example: -.PEPKTIDER(4)--PEPKTIDER(4).-
+    This function takes a cross-linked peptide in Kojak format (e.g.,
+    ".--PEPTIDE(1)--PEPTIDE(2)."), the cross-linker mass, and the PTM type
+    (currently supports unmodified peptides only), and returns a tuple
+    containing various information for analysis:
+
+    - A dictionary mapping precursor charge states to their theoretical m/z values (light and heavy isotopes).
+    - A list of fragment ion sequences (considering all combinations of peptide fragments and the cross-linker).
+    - Two lists containing m/z values for the light and heavy isotope forms of each fragment ion.
+    - The amino acid sequences of the two peptides linked by the cross-linker.
 
     Originally authored by Hamed Khakzad, edited by Joel Ströbaek.
 
-    Args
-    ----
+    Args:
+        xl (str): The cross-linked peptide sequence in Kojak format.
+        xlinker_mass (int): The mass of the cross-linker used.
+        ptm_type (str): The type of PTM applied (currently supports unmodified,
+        "1").
 
-
-    Returns
-    -------
-
+    Returns:
+        Tuple: A tuple containing the following elements:
+            - precursor_dict (dict): Maps precursor charge states to their m/z values (light and heavy).
+            - fragment_list (List[str]): List of fragment ion sequences.
+            - mz_list_L (List[float]): m/z values for light isotope fragment ions.
+            - mz_list_H (List[float]): m/z values for heavy isotope fragment ions.
+            - peptide_1 (str): Amino acid sequence of the first peptide.
+            - peptide_2 (str): Amino acid sequence of the second peptide.
     """
-
     h_mass = 1.008
 
     mz_list_1 = []

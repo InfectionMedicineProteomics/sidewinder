@@ -19,9 +19,9 @@ import click
 import pandas
 from pyteomics import mgf
 
-from ms2_utils import dda_filter
-from ms2_utils import fig_maker
-from ms2_utils.mgf_utils import fragment_generator
+from utils import dda_filter
+from utils import fig_maker
+from utils import fragment_generator
 
 
 # xl_file should potentially be changed to a top XL file...
@@ -30,15 +30,41 @@ def taxlink(all_xls_file: Path,
             output_dir: Path,
             delta: float,
             intensity_filter: float, xlinker_type: int, ptm_type: str) -> Path:
-    """...
-
-    ...
-
-    Parameters
-    ----------
-
     """
+    Analyzes MS/MS data (MGF file) to identify spectra supporting potential XL
+    interactions (XLs) defined in a separate file.
 
+    This function takes an MGF file containing MS/MS spectra, a list of potential XL links
+    (one per line in a text file), an output directory, mass tolerance (delta) for precursor
+    and fragment ion matching, an intensity filter for considering matched peaks, an XL linker
+    type (DSS, DSG, or EGS), and a PTM type (currently supports unmodified peptides only).
+
+    It performs the following steps:
+
+    1. Imports the list of XLs from the provided file.
+    2. Filters the MGF file based on precursor masses matching the XLs within the specified tolerance.
+    3. Creates a SQLite database for storing analysis results.
+    4. Iterates through each XL:
+        - Generates theoretical fragment ions for the XL sequence considering the linker mass and PTM type.
+        - Analyzes the filtered MGF data to identify spectra matching both the precursor mass
+          and a minimum number of fragment ions for the XL, considering the mass tolerance.
+        - Scores the matching spectra based on the number and intensity of matched fragment ions.
+        - Stores the results (XL, matched spectrum ID, fragment coverage, etc.) in the SQLite database.
+        - Optionally creates figures for top-scoring spectra (with a minimum fragment coverage threshold).
+    5. Saves the XLs with the most supported spectra (highest scoring) to a separate text file.
+
+    Args:
+        all_xls_file (Path): Path to the text file containing potential XL interactions (one per line).
+        mgf_file (Path): Path to the MGF file containing MS/MS spectra.
+        output_dir (Path): Path to the output directory for storing results.
+        delta (float): Mass tolerance (delta) for precursor and fragment ion matching.
+        intensity_filter (float): Minimum intensity filter for considering matched peaks in spectra.
+        xlinker_type (int): Type of XL linker used (1: DSS, 2: DSG, 3: EGS).
+        ptm_type (str): Type of PTM considered (currently supports unmodified peptides only, "1").
+
+    Returns:
+        Path: A handle to the opened SQLite database connection (closed upon script completion).
+    """
     # Disuccinimidyl suberate:
     DSS_mass = 138.06808  # mass.calculate_mass(formula='C16H20N2O8')
 
@@ -335,13 +361,24 @@ def run_ms2_analysis(mgf_file: Path,
                      xl_file: Path,
                      x_linker: int,
                      mass_delta_cutoff: float, output_dir: Path) -> Path:
-    """...
+    """
+    Runs the Cheetah-MS MS2 analysis.
 
-    ...
+    This function serves as the main entry point for the script, and parses
+    command-line arguments, calls the `taxlink` function to perform the main
+    analysis, and saves the identified top-scoring XLs (with the most
+    supporting spectra) to a separate file.
 
-    Parameters
-    ----------
+    Args:
+        mgf_file (Path): Path to the MGF file containing MS/MS spectra.
+        xl_file (Path): Path to the text file containing potential XL links.
+        x_linker (int): XL linker type (1: DSS, 2: DSG, 3: EGS).
+        mass_delta_cutoff (float): Mass tolerance (delta) for precursor and
+        fragment ion matching.
+        output_dir (Path): Path to the output directory for storing results.
 
+    Returns:
+        Path: A handle to the opened SQLite database connection (closed upon script completion).
     """
     delta = mass_delta_cutoff  # 0.01 or 0.05.
 

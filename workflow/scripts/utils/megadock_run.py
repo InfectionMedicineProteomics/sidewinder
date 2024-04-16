@@ -1,12 +1,44 @@
+#!/usr/bin/env python3
+
+# TODO:
+#   - Include argument to specify the path to the container,
+#     and a check to see that the provided container exists.
+
+
 import subprocess
 # from os import getuid
-# from pathlib import Path
+from pathlib import Path
 
 # import docker
-from Bio.PDB import PDBParser
+from Bio.PDB import PDBParser, Structure
 
-def megadock_run(pdb_a, pdb_b, dock_file, model_number, output_dir):
 
+def megadock_run(pdb_a: Path,
+                 pdb_b: Path,
+                 dock_file: Path,
+                 model_number: int, output_dir: Path) -> Structure:
+    """
+    Runs a Megadock docking simulation using a Singularity container and generates a pseudo-docked PDB structure.
+
+    This function executes a Megadock docking simulation within a Singularity container to generate models for
+    two input PDB files (pdb_a and pdb_b). It leverages the 'decoygen' executable within the container to create
+    docked models. It then constructs a pseudo-docked PDB by combining the beginning of pdb_a with one of the
+    generated decoys and returns the parsed structure.
+
+    Args:
+        pdb_a (Path): Path to the first PDB file.
+        pdb_b (Path): Path to the second PDB file.
+        dock_file (Path): Path to the dock parameter file.
+        model_number (int): Number of models to generate.
+        output_dir (Path): Path to the output directory for results.
+
+    Returns:
+        Structure: A Bio.PDB Structure object representing the pseudo-docked PDB.
+
+    Raises:
+        subprocess.CalledProcessError: If the Singularity command or shell commands fail.
+        IOError: If there are errors parsing the PDB files.
+    """
     # Assign container internal paths:
     # c_data_path = Path('data')
 

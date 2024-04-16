@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""Cheetah-MS docking module.
+"""
+
+__author__ = 'Joel Ströbaek'
+__email__ = 'joel.strobaek@gmail.com'
+
 
 # TODO:
 # - Save euclidean distances to variable and dump with output
@@ -6,20 +12,50 @@
 
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import click
 from Bio.PDB import PDBIO, PDBParser
 
-from utils.cheetah import xlvalidation as xlv, megadock_run as mdr
-#from .xlgenerator import xlgenerator
+from utils import xlvalidation as xlv, megadock_run as mdr
 
 
 def modeling(complex_pdb: Path,
              top_xls_file: Path,
              output_dir: Path,
-             dock_file: Path, cut_off: int, n_models: int, n_filters: int):
+             dock_file: Path,
+             cut_off: int,
+             n_models: int,
+             n_filters: int) -> Tuple[List[List[str]],
+                                      List[Path], List[int], List[float]]:
+    """
+    Performs protein-protein docking using Megadock, validates models with cross-links,
+    and filters top models based on the number of satisfied cross-links and score.
 
+    This function conducts the core protein-protein docking and filtering steps.
+    It parses the input PDB, performs docking with Megadock, validates the generated
+    models with cross-links, and filters the top models based on user-specified criteria.
+
+    Args:
+        complex_pdb (Path): Path to the input PDB file containing the protein complex.
+        top_xls_file (Path): Path to the file containing top cross-links.
+        output_dir (Path): Path to the desired output directory for results.
+        dock_file (Path): Path to the docking parameter file for Megadock.
+        cut_off (int): Distance cutoff for validating cross-links.
+        n_models (int): Number of models to generate in Megadock.
+        n_filters (int): Number of models to keep after filtering based on XL hits and score.
+
+    Returns:
+        Tuple[List[List[str]], List[Path], List[int], List[float]]:
+            - List[List[str]]: List of lists containing validated cross-links (XLs) for each model.
+            - List[Path]: List of Path objects to the output PDB files for the top models.
+            - List[int]: List containing the number of satisfied XLs for each top model.
+            - List[float]: List containing the score for each top model.
+
+    Raises:
+        ValueError: If invalid paths are provided for input files or output directory.
+        FileNotFoundError: If specified input files cannot be found.
+    """
     parser = PDBParser()
 
     structure_input = parser.get_structure('INPS', complex_pdb)
@@ -72,7 +108,7 @@ def modeling(complex_pdb: Path,
 
     job_output = model_dir / 'lr_model'
 
-    # find a new pose justifying more XLs. Then we report the pose with MAX number of XLs.
+    # Find a new pose justifying more XLs. Then we report the pose with MAX number of XLs.
     break_counter = 1
 
     # Global docking (low resolution)
@@ -94,7 +130,7 @@ def modeling(complex_pdb: Path,
              xl_below_cut) = xlv.xlvalidation(dock_structure,
                                               top_xls, cut_off)
 
-            # keeping top structures according to the "n_filters"
+            # Keeping top structures according to the "n_filters"
             if len(n_xls_list) > n_filters:
 
                 min_score = min(n_xls_list)
@@ -158,10 +194,24 @@ def modeling(complex_pdb: Path,
 
             f.write(f'{model},{n_xls_list[idx]},{score_list[idx]}\n')
 
-    return xls_list_out, out_pdb_list, n_xls_list, score_list
+    return (xls_list_out, out_pdb_list, n_xls_list, score_list)
 
-def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]):
+def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]) -> int:
+    """Identifies the index of the model with the most satisfied cross-links (XLs) and highest score.
 
+    This function determines the index of the best model among a set of generated models.
+    It considers two criteria: the number of satisfied XLs (XL hits) and the score of the model.
+
+    The function prioritizes models with the highest number of satisfied XLs.
+    If multiple models have the same highest number of XL hits, the model with the highest score is chosen.
+
+    Args:
+        xl_hits (List[int]): List containing the number of satisfied XLs for each model.
+        xl_scores (List[float]): List containing the score for each model.
+
+    Returns:
+        int: The index of the model with the most satisfied XLs and highest score.
+    """
     most_xls = max(xl_hits)
 
     if all(n == most_xls for n in xl_hits):
@@ -206,12 +256,30 @@ def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]):
               type=int,
               default=35,
               help='')
-def run_model(complex_pdb,
-              output_dir,
-              top_xls_file, dock_file, n_models, n_filters, cut_off):
-    """
-    """
+def run_model(complex_pdb: Path,
+              output_dir: Path,
+              top_xls_file: Path,
+              dock_file: Path,
+              n_models: int = 10,
+              n_filters: int = 3, cut_off: int = 35):
+    """Runs the protein-protein docking and model filtering process.
 
+    This function serves as the command-line interface for the docking workflow.
+    It handles user inputs, calls the necessary functions, and manages output files.
+
+    Args:
+        complex_pdb (Path): Path to the input PDB file containing the protein complex.
+        output_dir (Path): Path to the desired output directory for results.
+        top_xls_file (Path): Path to the file containing top cross-links.
+        dock_file (Path): Path to the docking parameter file for Megadock.
+        n_models (int, optional): Number of models to generate in Megadock. Defaults to 10.
+        n_filters (int, optional): Number of models to keep after filtering. Defaults to 3.
+        cut_off (int, optional): Distance cutoff for validating cross-links. Defaults to 35.
+
+    Raises:
+        ValueError: If invalid paths are provided for input files or output directory.
+        FileNotFoundError: If specified input files cannot be found.
+    """
     n_filters -= 1
 
     (xl_files,

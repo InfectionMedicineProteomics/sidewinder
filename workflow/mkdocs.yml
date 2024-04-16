@@ -1,0 +1,26 @@
+site_name: Sidewinder documentation
+
+theme:
+  name: readthedocs
+  navigation_depth: 10
+  features:
+    - search.suggest
+    - search.highlight
+    - content.code.annotation
+    - content.code.copy
+
+nav:
+  - index.md
+  - API Reference:
+    - reference/model_ref.md
+    - reference/ms2_ref.md
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [., scripts]
+          options:
+            heading_level: 3
+            show_root_heading: true
+            show_root_full_path: false
