@@ -8,3 +8,5 @@ viewer.ipynb
 config/user_*.yml
 config/entries.csv
 workflow/scripts/testing.ipynb
+.nv/
+config/*_2.*
