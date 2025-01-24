@@ -1,4 +1,4 @@
-site_name: Sidewinder documentation
+site_name: Sidewinder
 
 theme:
   name: readthedocs
@@ -13,13 +13,13 @@ nav:
   - index.md
   - API Reference:
     - reference/model_ref.md
-    - reference/ms2_ref.md
+    - reference/sidewinder-ms_ref.md
 
 plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [., scripts]
+          paths: [scripts, scripts/utils]
           options:
             heading_level: 3
             show_root_heading: true

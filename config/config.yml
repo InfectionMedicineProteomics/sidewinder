@@ -1,25 +1,28 @@
-# User configurable options:
+## USER configurable options:
 
 # Default output_dir: 'results/{date}'
-output_dir: '/path/to/output_directory'
+output_dir: '/srv/data1/home/jo0348st/projects/2025-di_ply_mAbs/sidewinder/6E5_binders'
 
-targets_dir: '/path/to/targets_pdb_dir'
-binder_dir: '/path/to/binder_pdb_dir'
+# Antibody dir:
+targets_dir: '/srv/data1/home/jo0348st/data/2025-di_ply_mAbs/structure/mAbs'
 
-ms2_file: '/path/to/input_ms2_file'  # Valid formats: [mzml, mgf]
+# Antigen dir:
+binders_dir: '/srv/data1/home/jo0348st/data/2025-di_ply_mAbs/structure/antigen'
 
-# mandatory
-ms2_files:  '/path/to/input_ms2_files'  ## path where all samples are stored
-##
+# Path where all samples are stored. Valid formats: [raw, mzml, mgf]
+ms2_files:  '/srv/data1/home/jo0348st/data/2025-di_ply_mAbs/xlms/raw'
+ms2_ext: '.raw'
 
-
-distance_cut_off: 32  # In Ångström
-num_of_top_filters: 3  # Models to keep
-model_samples: 10  # Cheetah-default=10, max=docking_samples
+distance_cut_off: 30  # In Ångström
+num_of_top_filters: 100  # Models to keep
+model_samples: 100  # Cheetah-default=10, max=docking_samples
 docking_samples: 2000  # Default 2000
 
-block_antibody_non_CDR: False
+block_antibody_non_CDR: True
 
-# Static configuration (not user specified):
+# Options: 1=DSS, 2=DSG, 3=EGS
+x_linker: 1  # Move option to CSV!
+
+## STATIC configuration (NOT user specified):
 
 thermoRawFileParser: '/srv/data1/home/jo0348st/src/thermoRawFileParser/ThermoRawFileParser.exe'

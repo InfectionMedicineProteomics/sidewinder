@@ -59,7 +59,7 @@ def calc_ptm_mass(ptm_type: str, peptide: str) -> float:
 
     Returns:
         float: The total mass shift caused by PTMs on the peptide (0 for
-        unmodified).
+            unmodified).
     """
     ptm_dict = {"1": (57.021464, "C"),
                 "2": (-79.966, "Y"),
@@ -80,7 +80,7 @@ def calc_ptm_mass(ptm_type: str, peptide: str) -> float:
 
     return 0 + (ptm_mass * ptm_count)
 
-def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str) -> Tuple:
+def fragment_generator(xl: str, xlinker_mass: int, xlinker: int, ptm_type: str) -> Tuple:
     """Generates theoretical fragment ions for a cross-linked peptide.
 
     This function takes a cross-linked peptide in Kojak format (e.g.,
@@ -99,7 +99,7 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str) -> Tuple:
         xl (str): The cross-linked peptide sequence in Kojak format.
         xlinker_mass (int): The mass of the cross-linker used.
         ptm_type (str): The type of PTM applied (currently supports unmodified,
-        "1").
+            "1").
 
     Returns:
         Tuple: A tuple containing the following elements:
@@ -111,6 +111,10 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str) -> Tuple:
             - peptide_2 (str): Amino acid sequence of the second peptide.
     """
     h_mass = 1.008
+
+    xlinker_deut = {1: 12*1.006276746,  # DSS
+                    2: 6*1.006276746,  # DSG
+                    3: 12*1.006276746}  # EGS
 
     mz_list_1 = []
 
@@ -157,8 +161,8 @@ def fragment_generator(xl: str, xlinker_mass: int, ptm_type: str) -> Tuple:
         precursor_mz_list_L = [xl_mass + float(i / precursor_charge)
                                for i in range(5)]
 
-        # Calculating M heavy (DSS_D12)
-        xl_mass_heavy = xl_mass + ((12*1.006276746)/precursor_charge)
+        # Calculating M heavy
+        xl_mass_heavy = xl_mass + ((xlinker_deut[xlinker])/precursor_charge)
 
         precursor_mz_list_H = [xl_mass_heavy + float(i / precursor_charge)
                                for i in range(5)]

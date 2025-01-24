@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 
-#output_dir=$(grep -E '^output_dir: ' config/user_config.yml | cut -f2 -d' ' | tr -d "'")
+export XDG_CACHE_HOME=/srv/data1/home/jo0348st/.cache
 
-# Removed from command:
-# --singularity-args "--bind $output_dir:/data"
+export TMPDIR=/srv/data1/home/jo0348st/.tmp
 
 # Add -k to continue with independant jobs.
-snakemake --use-singularity --singularity-args "--bind /srv/data1" --use-conda --rerun-triggers mtime --cores 100 "$@"
+snakemake \
+    --cores 80 \
+    --use-conda \
+    --use-singularity \
+    --singularity-args "--nv --bind /srv/data1" \
+    --resources nvidia_gpu=4 \
+    --rerun-triggers mtime \
+    "$@"

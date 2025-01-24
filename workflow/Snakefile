@@ -20,7 +20,7 @@ __email__ = 'joel.strobaek@gmail.com'
 # - MAKE A BETTER FOLDER STRUCTURE FOR THE OUTPUT
 # - REMOVE ALL THE HARD CODING!
 # - Refactor the scripts and workflow to actually make it modular...
-#       - Many of the steps are interwoven in the current itteration,
+#       - Many of the steps are interwoven in the current iteration,
 #         which (e.g.) inhibits an easy change of docking software
 # - SAVE THE FILTERED MGF IN samples/filtered_mgf/
 # - RENAME THE megadock.out FILE?
@@ -36,7 +36,7 @@ from snakemake.utils import min_version
 
 min_version("6.0")  # Min version for using modules.
 
-configfile: "config/user_config.yml"
+configfile: "config/config.yml"
 
 
 # Convert config paths from string to Path objects.
@@ -69,20 +69,29 @@ txms_files =  'txms'
 
 BLOCK_FV = bool(config['block_antibody_non_CDR'])
 
+linker_nums = {'DSS': 1,
+               'DSG': 2,
+               'ESG': 3}
 
 table_file = config.get('table_file', 'config/entries.csv')
 
-col_antigen = config.get('col_antigen', 'antigen')
-col_antibody = config.get('col_antibody', 'antibody')
-col_sample = config.get('col_sample', 'sample')
+# col_antigen = config.get('col_antigen', 'antigen')
+# col_antibody = config.get('col_antibody', 'antibody')
+# col_sample = config.get('col_sample', 'sample')
 
 df = pd.read_csv(table_file)
 
-BINDERS_LIST, TARGETS_LIST, SAMPLES = df.values.T
+BINDERS_LIST, TARGETS_LIST, SAMPLES, LINKERS = df.values.T
 
 BEST_PDB = ['best_model.pdb'] * len(BINDERS_LIST)
 
 BEST_TXT = ['best_model_xls.txt'] * len(BINDERS_LIST)
+
+linker_dict = {f'{b}_{t}_{s}': linker_nums[l]
+               for b, t, s, l in zip(BINDERS_LIST,
+                                     TARGETS_LIST,
+                                     SAMPLES,
+                                     LINKERS)}
 
 
 rule all:
@@ -172,7 +181,7 @@ rule seq2xl:
         os.path.join(OUTDIR_BASE,
                      docking_files, "{binder}", "{target}", "all_xls.txt")
     params:
-        seq2xl = 'workflow/scripts/utils/cheetah/seq2xl_v1.5.py',
+        seq2xl = 'workflow/scripts/utils/seq2xl_v1.5.py',
         #outdir = f'{{outdir}}/{{binder}}/{{target}}'
         outdir = os.path.join(OUTDIR_BASE,
                               docking_files,"{binder}", "{target}")
@@ -193,7 +202,8 @@ rule megadock:
         os.path.join(OUTDIR_BASE,
                      docking_files, "{binder}_+_{target}_megadock.out")
     params:
-        megadock = '/usr/local/megadock/megadock-4.1.1/megadock',
+        # megadock = '/opt/MEGADOCK/megadock-gpu',  # GPU
+        megadock = '/usr/local/megadock/megadock-4.1.1/megadock',  # CPU
         predictions = config['docking_samples'],
         pdb_a = os.path.join(OUTDIR_BASE,
                              docking_files,
@@ -206,9 +216,12 @@ rule megadock:
                              docking_files,
                              "{binder}", "{target}", "chain_B.pdb"),
     singularity:
-        '/srv/data1/home/jo0348st/containers/megadock.sif'  # Move to config.
+        # 'workflow/envs/megadock_4.1.4-gpu.sif'  # GPU
+        'workflow/envs/megadock.sif'  # CPU
     threads:
-        round(workflow.cores * 0.85)
+        max(1, int(workflow.cores/1))
+    resources:
+        nvidia_gpu=4
     log:
         logfile = os.path.join(OUTDIR_BASE,
                                docking_files,
@@ -219,35 +232,36 @@ rule megadock:
         "-L {params.pdb_b} "
         "-o {output} "
         "-N {params.predictions} "
-        "> {log.logfile}"
+        "&> {log.logfile}"
 
 rule msconvert:
     # TODO:
     #   - Sort proper thermoRawFileParser inclusion
     input:
-        ms2 = os.path.join(config["ms2_files"], "{MGF_STEM}.mgf")
+        ms2 = os.path.join(config["ms2_files"],
+                           f"{{MGF_STEM}}{config['ms2_ext']}")
     output:
-        mgf = os.path.join(OUTDIR_BASE,
-                           sample_files, "ms2_convert", "{MGF_STEM}.mgf")
+        mzml = os.path.join(OUTDIR_BASE,
+                           sample_files, "ms2_convert", "{MGF_STEM}.mzML")
     params:
         outdir = os.path.join(OUTDIR_BASE, sample_files, "ms2_convert"),
         thermoRawFileParser = config['thermoRawFileParser']
     conda:
         'envs/mono_env.yml'
     shell:
-        "[[ $(sed 's/^.*\.//' <(echo {input.ms2})) == mgf ]]"
+        "[[ $(sed 's/^.*\.//' <(echo {input.ms2})) == mzML ]]"
         " &&"
-        " ln -s {input.ms2} {output.mgf}"
+        " ln -s {input.ms2} {output.mzml}"
         " ||"
         " mono {params.thermoRawFileParser}"
         " -i={input.ms2}"
         " -o={params.outdir}"
-        " -f=0"
+        " -f=2"
 
 rule ms2:
     # TODO: Speed up!
     input:
-        mgf = rules.msconvert.output.mgf,
+        mzml = rules.msconvert.output.mzml,
         xls = rules.seq2xl.output
     output:
         sql = os.path.join(OUTDIR_BASE,
@@ -267,10 +281,10 @@ rule ms2:
                                 txms_files,
                                 "{MGF_STEM}",
                                 "{binder}",
-                                "{target}", "{MGF_STEM}_filtered.mgf")
+                                "{target}", "{MGF_STEM}_filtered.mzML")
     params:
-        ms2_script = 'workflow/scripts/ms2.py',
-        x_linker = config['x_linker'],
+        ms2_script = 'workflow/scripts/sidewinder-ms_v2.py',
+        x_linker = config['x_linker'],#linker_dict['_'.join(["{target}"])],
         mass_delta_cutoff = 0.01,
         outdir = os.path.join(OUTDIR_BASE,
                               txms_files, "{MGF_STEM}", "{binder}", "{target}")
@@ -278,7 +292,8 @@ rule ms2:
         'envs/pyteomics_env.yml'
     shell:
         "python3 {params.ms2_script} "
-        "--mgf_file {input.mgf} "
+        "--mzml_file {input.mzml} "
+        # "--mgf_file {input.mgf} "
         "--xl_file {input.xls} "
         "--x_linker {params.x_linker} "
         "--mass_delta_cutoff {params.mass_delta_cutoff} "
@@ -311,13 +326,13 @@ rule modeling:
         cut_off = config['distance_cut_off'],
         n_top_f = config['num_of_top_filters'],
         n_docks = config['model_samples'],
-        modeling_script = 'workflow/scripts/cheetah-model.py',
+        modeling_script = 'workflow/scripts/sidewinder-model.py',
         outdir = os.path.join(OUTDIR_BASE,
                               txms_files, "{MGF_STEM}", "{binder}", "{target}")
     conda:
         'envs/biopython_env.yml'
     threads:
-        round(workflow.cores * 0.35)
+        round(workflow.cores * 0.10)
     shell:
         "python3 {params.modeling_script} "
         "--complex_pdb {input.PDB} "

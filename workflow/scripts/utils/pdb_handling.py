@@ -85,7 +85,6 @@ def close_pipes(pipes: List[Popen]) -> None:
 
         p.stdout.close()
 
-@click.callback  # Not sure this is correct.
 def mkdir(context, param, value: Path) -> Path:
     """Creates a directory, ensuring parent directories exist.
 

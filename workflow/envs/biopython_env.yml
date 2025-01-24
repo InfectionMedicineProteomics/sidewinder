@@ -2,7 +2,7 @@ name: biopython
 channels:
   - conda-forge
 dependencies:
-  - python=3.7
+  - python=3.8  # Changed from 3.7 to include walrus operator
   - biopython
   - click
   - abnumber

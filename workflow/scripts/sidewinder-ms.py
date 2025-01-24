@@ -29,7 +29,9 @@ def taxlink(all_xls_file: Path,
             mgf_file: Path,
             output_dir: Path,
             delta: float,
-            intensity_filter: float, xlinker_type: int, ptm_type: str) -> Path:
+            intensity_filter: float,
+            xlinker_type: int,
+            ptm_type: str, trim_spectra_id: bool=True) -> Path:
     """
     Analyzes MS/MS data (MGF file) to identify spectra supporting potential XL
     interactions (XLs) defined in a separate file.
@@ -75,8 +77,8 @@ def taxlink(all_xls_file: Path,
     EGS_mass = 226.04774
 
     xlinker_dict = {1: DSS_mass,
-                   2: DSG_mass,
-                   3: EGS_mass}
+                    2: DSG_mass,
+                    3: EGS_mass}
 
     xlinker_mass = xlinker_dict[xlinker_type]
 
@@ -90,11 +92,12 @@ def taxlink(all_xls_file: Path,
     # Considering the list of input XLs, we remove all extra spectra
     # from input MGF according to the pre-cursor m/z and make a new
     # filtered version to analyze.
-    filtered_mgf_file = dda_filter.DDA_filter(all_xls_list,
-                                             mgf_file,
-                                             output_dir,
-                                             delta,
-                                             xlinker_mass, ptm_type)
+    filtered_mgf_file = dda_filter.dda_filter(all_xls_list,
+                                              mgf_file,
+                                              output_dir,
+                                              delta,
+                                              xlinker_mass,
+                                              xlinker_type, ptm_type)
 
     # Build SQLite3 database.
     sql_db_file = output_dir / 'ms2_results.sql'
@@ -105,7 +108,7 @@ def taxlink(all_xls_file: Path,
 
     # Create table:
     c.execute('''CREATE TABLE IF NOT EXISTS MS2Data
-                 (XL text, mgf_file text, spectrum_id text, spectrum_num integer, \
+                 (XL text, XL_mass real, mgf_file text, spectrum_id text, spectrum_num integer, \
                  delta real, pre_charge integer, H_L text, fragSc integer, \
                  coverage real, covered_Frags text, covered_Mz text, covered_int text,\
                  main_Mz text, main_int text, count integer)''')
@@ -133,7 +136,8 @@ def taxlink(all_xls_file: Path,
              mz_heavy_all,
              p1,
              p2) = fragment_generator.fragment_generator(xl,
-                                                         xlinker_mass, ptm_type)
+                                                         xlinker_mass,
+                                                         xlinker_type, ptm_type)
 
             mgf_spec_score = [0] * len(mgf_dict_list)
 
@@ -256,6 +260,10 @@ def taxlink(all_xls_file: Path,
 
                         spectrum_id = item_mgf['params']['title']
 
+                        if trim_spectra_id:
+
+                            spectrum_id = item_mgf['params']['scans']
+
                         spectrum_num = num_mgf
 
                         peaks_num = len(item_mgf['m/z array'])
@@ -318,11 +326,11 @@ def taxlink(all_xls_file: Path,
 
                         if (spectrum_id != 'NA' and len(covered_mz) >= 5):
 
-                            c.execute("INSERT INTO MS2Data(XL, mgf_file,spectrum_id, spectrum_num, \
+                            c.execute("INSERT INTO MS2Data(XL, XL_mass, mgf_file,spectrum_id, spectrum_num, \
                             delta, pre_charge, H_L, fragSc, coverage, covered_Frags, covered_Mz, covered_int, \
                             main_Mz, main_int, count) VALUES \
                             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" \
-                            ,(xl, str(filtered_mgf_file), spectrum_id, spectrum_num, delta, spec_charge, heavy_light_flag, \
+                            ,(xl, spec_pepmass, str(filtered_mgf_file), spectrum_id, spectrum_num, delta, spec_charge, heavy_light_flag, \
                             max(mgf_spec_score), coverage, ",".join(str(x) for x in covered_Frags), \
                             ",".join(str(w) for w in covered_mz), ",".join(str(x) for x in covered_intensity), \
                             ",".join(str(x) for x in main_spectra), ",".join(str(x) for x in main_intensity), \
@@ -351,8 +359,8 @@ def taxlink(all_xls_file: Path,
               required=True,
               type=click.Path(exists=True, path_type=Path), help='')
 @click.option('--x_linker',
-              required=False, default=1, type=int,
-              help='Options: 1=DSS, 2=DSG, 3=EGS')
+              required=False,
+              default=1, type=int, help='Options: 1=DSS, 2=DSG, 3=EGS')
 @click.option('--mass_delta_cutoff', type=float, default=0.01, help='')
 @click.option('--output_dir',
               required=True,
@@ -374,7 +382,7 @@ def run_ms2_analysis(mgf_file: Path,
         xl_file (Path): Path to the text file containing potential XL links.
         x_linker (int): XL linker type (1: DSS, 2: DSG, 3: EGS).
         mass_delta_cutoff (float): Mass tolerance (delta) for precursor and
-        fragment ion matching.
+            fragment ion matching.
         output_dir (Path): Path to the output directory for storing results.
 
     Returns:

@@ -1,17 +1,17 @@
 # Modeling module
 
-::: scripts.cheetah-model.run_model
+::: cheetah-model.run_model
 
 ## Functions
 
-::: scripts.cheetah-model.modeling
+::: cheetah-model.modeling
 
-::: scripts.cheetah-model.get_best_model_idx
+::: cheetah-model.get_best_model_idx
 
 ## Dependencies
 
 __Imported utility modules.__
 
-::: utils.xlvalidation
+::: xlvalidation
 
-::: utils.megadock_run
+::: megadock_run

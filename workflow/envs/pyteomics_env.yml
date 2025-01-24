@@ -4,5 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - pyteomics
+  - pymzml
+  - scipy
   - click
   - pandas

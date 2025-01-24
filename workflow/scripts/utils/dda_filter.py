@@ -24,33 +24,35 @@ def mgf_writer(mgf_output_file: Path, spectra: dict) -> None:
             - 'm/z array': list of m/z values for the spectrum peaks.
             - 'intensity array': list of intensity values for the spectrum peaks.
     """
-    with open(mgf_output_file, 'a') as f:  # Append mode for multiple spectra.
+    # with open(mgf_output_file, 'a') as f:  # Append mode for multiple spectra.
 
-        f.write('BEGIN IONS\n')
+    mgf_output_file.write('BEGIN IONS\n')
 
-        f.write(f'TITLE={spectra["params"]["title"]}\n')
+    mgf_output_file.write(f'TITLE={spectra["params"]["title"]}\n')
 
-        f.write(f'PEPMASS={spectra["params"]["pepmass"][0]}\n')
+    mgf_output_file.write(f'PEPMASS={spectra["params"]["pepmass"][0]}\n')
 
-        f.write(f'RTINSECONDS={spectra["params"]["rtinseconds"]}\n')
+    mgf_output_file.write(f'RTINSECONDS={spectra["params"]["rtinseconds"]}\n')
 
-        f.write(f'CHARGE={(str(spectra["params"]["charge"][0]))\
-                          .replace("+", "")}\n')
+    charge = (str(spectra["params"]["charge"][0])).replace("+", "")
 
-        for i in range(len(spectra['m/z array'])):
+    mgf_output_file.write(f'CHARGE={charge}\n')
 
-            mz = str(spectra["m/z array"][i])
+    for i in range(len(spectra['m/z array'])):
 
-            intensity = str(spectra["intensity array"][i])
+        mz = str(spectra["m/z array"][i])
 
-            f.write(f'{mz} {intensity}\n')
+        intensity = str(spectra["intensity array"][i])
 
-        f.write('END IONS\n\n')
+        mgf_output_file.write(f'{mz} {intensity}\n')
 
-def DDA_filter(xl_list: List[str],
-              mgf_file: Path,
-              output_dir: Path,
-              precursor_delta: float, xlinker_mass: int, ptm_type: str) -> Path:
+    mgf_output_file.write('END IONS\n\n')
+
+def dda_filter(xl_list: List[str],
+               mgf_file: Path,
+               output_dir: Path,
+               precursor_delta: float,
+               xlinker_mass: int, xlinker: int, ptm_type: str) -> Path:
     """Filters an MGF file based on precursor masses matching cross-links.
 
     This function takes a list of potential cross-links (XLs), an MGF file containing MS/MS spectra,
@@ -95,6 +97,7 @@ def DDA_filter(xl_list: List[str],
              mz_heavy_all,
              p1, p2) = fragment_generator.fragment_generator(xl,
                                                              xlinker_mass,
+                                                             xlinker,
                                                              ptm_type)
 
             for spectra in mgf_dict_list:  # Removed enumeration.
@@ -114,7 +117,7 @@ def DDA_filter(xl_list: List[str],
 
                         mz_diff_light = min(abs(spec_pepmass - pre_mz)
                                             for pre_mz
-                                            in precursor_dict[spec_charge][0:4])
+                                            in precursor_dict[spec_charge][0:5])
 
                         mz_diff_heavy = min(abs(spec_pepmass - pre_mz)
                                             for pre_mz
