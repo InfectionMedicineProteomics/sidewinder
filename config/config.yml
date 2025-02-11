@@ -1,7 +1,7 @@
 ## USER configurable options:
 
 # Default output_dir: 'results/{date}'
-output_dir: '/srv/data1/home/jo0348st/projects/2025-di_ply_mAbs/sidewinder/6E5_binders'
+output_dir: '/srv/data1/home/jo0348st/projects/2025-di_ply_mAbs/sidewinder/review'
 
 # Antibody dir:
 targets_dir: '/srv/data1/home/jo0348st/data/2025-di_ply_mAbs/structure/mAbs'
@@ -13,7 +13,7 @@ binders_dir: '/srv/data1/home/jo0348st/data/2025-di_ply_mAbs/structure/antigen'
 ms2_files:  '/srv/data1/home/jo0348st/data/2025-di_ply_mAbs/xlms/raw'
 ms2_ext: '.raw'
 
-distance_cut_off: 30  # In Ångström
+distance_cut_off: 30  # In Ångström, 30 is good for both DSS and DSG
 num_of_top_filters: 100  # Models to keep
 model_samples: 100  # Cheetah-default=10, max=docking_samples
 docking_samples: 2000  # Default 2000
@@ -21,7 +21,6 @@ docking_samples: 2000  # Default 2000
 block_antibody_non_CDR: True
 
 # Options: 1=DSS, 2=DSG, 3=EGS
-x_linker: 1  # Move option to CSV!
 
 ## STATIC configuration (NOT user specified):
 

@@ -11,12 +11,19 @@ __email__ = 'joel.strobaek@gmail.com'
 # - Make sure invalid amino acids are caught!
 
 
+import warnings
 from pathlib import Path
 from subprocess import Popen, PIPE
 from typing import List
 
-from Bio.PDB import PDBParser, PPBuilder, Structure
+from Bio import BiopythonParserWarning
+from Bio.PDB import PDBParser, PPBuilder, Structure, PDBConstructWarning
 import click
+
+
+warnings.simplefilter('ignore', BiopythonParserWarning)
+
+warnings.simplefilter('ignore', PDBConstructWarning)
 
 
 def parse_pdb(pdb: Path,
@@ -153,13 +160,10 @@ def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
     """
     chains = ('A', 'B')
 
-    output_pdb = output_dir / 'complex_AB.pdb'
-
-    seq_files = []
-
     path_in = {chains[0]: pdb1, chains[1]: pdb2}
 
-    path_out = {x: output_dir / f'chain_{x}.pdb' for x in chains}
+    paths_out = {chains[0]: output_dir / f'{pdb1.stem}',
+                 chains[1]: output_dir / f'{pdb2.stem}'}
 
     for out_chain, pdb in path_in.items():
 
@@ -170,25 +174,21 @@ def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
 
         seq = seq_from_structure(structure=struct)
 
-        seq_file = output_dir / f'chain_{out_chain}.txt'
-
-        seq_files.append(seq_file)
+        seq_file = f'{paths_out[out_chain]}.txt'
 
         with open(seq_file, 'w') as f:
 
-            print(seq, file=f)
+            f.write(f'{seq}\n')
 
-        #print(path_out[out_chain], out_chain, sep='\t')
-
-        with open(path_out[out_chain], 'w') as f:
+        with open(f'{paths_out[out_chain]}.pdb', 'w') as f:
 
             # Open pipe call and specify commands; final pipe stdout is to file.
             p1 = Popen(['pdb_keepcoord', pdb], stdout=PIPE)
 
             p2 = Popen(['pdb_reres'], stdin=p1.stdout, stdout=PIPE)
 
-            p3 = Popen(['pdb_chain', f'-{out_chain}'],
-                       stdin=p2.stdout, stdout=PIPE)
+            p3 = Popen(['pdb_chain',
+                        f'-{out_chain}'], stdin=p2.stdout, stdout=PIPE)
 
             p4 = Popen(['pdb_tidy'], stdin=p3.stdout, stdout=f)
 
@@ -197,23 +197,6 @@ def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
 
             # Execute pipe.
             p4.communicate()
-
-    with open(output_pdb, 'w') as f:
-
-        # Open pipe call and specify commands; final pipe stdout is to file.
-        p1 = Popen(['pdb_merge', path_out['A'], path_out['B']], stdout=PIPE)
-
-        p2 = Popen(['pdb_reres'], stdin=p1.stdout, stdout=PIPE)
-
-        p3 = Popen(['pdb_reres'], stdin=p2.stdout, stdout=PIPE)
-
-        p4 = Popen(['pdb_tidy'], stdin=p3.stdout, stdout=f)
-
-        # Allow pipes to receive a SIGPIPE if communication exits.
-        close_pipes(pipes=[p1, p2, p3])
-
-        # Execute pipe.
-        p4.communicate()
 
 
 if __name__ == '__main__':

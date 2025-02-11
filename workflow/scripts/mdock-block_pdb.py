@@ -19,6 +19,7 @@ from abnumber import Chain
 from Bio import BiopythonParserWarning, SeqIO
 from typing_extensions import Literal
 
+
 warnings.simplefilter('ignore', BiopythonParserWarning)
 
 
@@ -311,6 +312,8 @@ def block_fv_pdb(multi_chain_pdb: Path,
 
     output_dir = output_dir.resolve()
 
+    output_file_name = single_chain_pdb.stem
+
     fv_index = fv_indexing(multi_chain_pdb, 'chothia')
 
     blocker = block_pdb(single_chain_pdb, output_dir)
@@ -359,7 +362,7 @@ def block_fv_pdb(multi_chain_pdb: Path,
 
     tmp_out = blocker.receptor_blocked
 
-    final_out = str(output_dir / 'chain_A_blocked.pdb')
+    final_out = str(output_dir / f'{output_file_name}_blocked.pdb')
 
     shutil.copy(str(tmp_out), final_out)
 

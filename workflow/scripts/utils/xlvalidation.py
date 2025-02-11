@@ -6,9 +6,6 @@ from typing import List, Tuple
 
 from Bio.PDB import CaPPBuilder, Selection, Structure
 
-## xlvalidation parse the input pdb (according to the partners involved)
-## to obtain number of XLs it fulfills.
-## inputs: pdb, list of XLs, partners, dist cut-off
 
 def eu_dist(structure: Structure, i: int, j: int) -> float:
     """Calculates the Euclidean distance between two alpha-carbon (CA) atoms within a protein structure.
@@ -64,10 +61,6 @@ def xlvalidation(structure: Structure,
     Raises:
         ValueError: If the structure, XL definitions, or distance cutoff are invalid.
     """
-    ## 1. Reading and storing the pdb in a pose
-    #parser = PDBParser()
-    #structure = parser.get_structure('INPS', './decoy1.pdb')
-    #model = structure[0]
     sequence_list_A = []
 
     sequence_list_B = []
@@ -79,17 +72,14 @@ def xlvalidation(structure: Structure,
         sequence_list_A.append(str(pp.get_sequence()))
 
     sequence_A = ''.join(sequence_list_A)
-    # print ("\nPartner 1 sequence is: \n", sequence_A)
 
     for pp in ppb.build_peptides(structure[0]['B']):
 
         sequence_list_B.append(str(pp.get_sequence()))
 
     sequence_B = ''.join(sequence_list_B)
-    # print ("\nPartner 2 sequence is: \n", sequence_B)
 
     sequence_combined = sequence_A + sequence_B
-    # print ("\nCombined sequence is: \n", sequence_combined)
 
     output_xl_number = 0
 
@@ -103,7 +93,7 @@ def xlvalidation(structure: Structure,
 
         K_pos_P2 = 0
 
-        eulidean_dist = 10000.0
+        euclidean_dist = 10000.0
 
         xl_trans = str.maketrans('', '', digits)
 
@@ -146,34 +136,26 @@ def xlvalidation(structure: Structure,
 
                         seq_pos_p2_k = pos2+K_pos_P2
 
-            # print ("aa positions on the sequences: ", seq_pos_p1_k, seq_pos_p2_k)
-
             if ((peptide1 in sequence_combined) and
                 (peptide2 in sequence_combined)):
 
-                eulidean_dist = eu_dist(structure, seq_pos_p1_k+1,
+                euclidean_dist = eu_dist(structure, seq_pos_p1_k+1,
                                         seq_pos_p2_k+1)
 
-                # print ("Euclidean distance is:  ", eulidean_dist, "\n")
-
-            # else:
-                # print ("The XL is not found on the protein sequence. Check each peptide to be valid!\n")
-
-
-            if eulidean_dist <= cut_off:
+            if euclidean_dist <= cut_off:
 
                 good_XL_list.append(xl)
 
                 output_xl_number += 1
 
+                d_opti = cut_off*.55  # Hypothetical distance optimum.
+
                 # Normal distribution formula: Ae^-(x-M)/2q^2
-                normal_dist_score += (10*(1/(exp(pow((eulidean_dist-17.5),
-                                                       2)/30))))
-                # print ("found a valid XL!", eulidean_dist, "\n")
+                normal_dist_score += (10*(1/(exp(pow((euclidean_dist-d_opti),
+                                                       2)/cut_off))))
 
         except:
 
             pass
 
-    # print ("Score:", output_xl_number, normal_dist_score)
     return (output_xl_number, normal_dist_score, good_XL_list)

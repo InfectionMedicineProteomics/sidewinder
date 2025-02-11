@@ -17,8 +17,12 @@ from typing import List
 
 import click
 from Bio import BiopythonParserWarning, SeqIO
+from Bio.PDB import PDBConstructWarning
+
 
 warnings.simplefilter('ignore', BiopythonParserWarning)
+
+warnings.simplefilter('ignore', PDBConstructWarning)
 
 
 def xl_generator(sequence: str,
@@ -310,7 +314,8 @@ def seq2xl(pdb_file1: Path,
 
     xls_2 = rec_to_xls(rec_2, max_peptide_length=pep_len)
 
-    xl_file = output_dir / 'all_xls.txt'  # All XLs output file.
+    # All XLs output file.
+    xl_file = output_dir / f'{pdb_file2.stem}_+_{pdb_file1.stem}.xls'
 
     # Validate the XLs assigned to xls_2 based on XLs generated for a
     # superset structure of the protein. Useful if not the entire protein

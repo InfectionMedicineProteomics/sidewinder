@@ -20,7 +20,8 @@ from Bio.PDB import PDBIO, PDBParser
 from utils import xlvalidation as xlv, megadock_run as mdr
 
 
-def modeling(complex_pdb: Path,
+def modeling(pdb_a: Path,
+             pdb_b: Path,
              top_xls_file: Path,
              output_dir: Path,
              dock_file: Path,
@@ -56,19 +57,19 @@ def modeling(complex_pdb: Path,
         ValueError: If invalid paths are provided for input files or output directory.
         FileNotFoundError: If specified input files cannot be found.
     """
-    parser = PDBParser()
+    # parser = PDBParser()
 
-    structure_input = parser.get_structure('INPS', complex_pdb)
+    # structure_input = parser.get_structure('INPS', complex_pdb)
 
-    model = structure_input[0]
+    # model = structure_input[0]
 
-    partner_A_pdb = model['A']
+    # partner_A_pdb = model['A']
 
-    partner_B_pdb = model['B']
+    # partner_B_pdb = model['B']
 
-    pA_out = output_dir / 'pdb_A.pdb'
+    # pA_out = output_dir / 'pdb_A.pdb'
 
-    pB_out = output_dir / 'pdb_B.pdb'
+    # pB_out = output_dir / 'pdb_B.pdb'
 
     top_xls = []
 
@@ -80,15 +81,15 @@ def modeling(complex_pdb: Path,
 
     # Rewriting pdb_A and pdb_B to make sure the ending is correct (TER and END)
     # megadock cannot produce correct models with wrong ending.
-    io = PDBIO()
+    # io = PDBIO()
 
-    io.set_structure(partner_A_pdb)
+    # io.set_structure(partner_A_pdb)
 
-    io.save(str(pA_out))
+    # io.save(str(pA_out))
 
-    io.set_structure(partner_B_pdb)
+    # io.set_structure(partner_B_pdb)
 
-    io.save(str(pB_out))
+    # io.save(str(pB_out))
 
     n_xls_list = []
 
@@ -116,8 +117,8 @@ def modeling(complex_pdb: Path,
 
     while break_counter <= n_models:
 
-        dock_structure = mdr.megadock_run(pA_out,
-                                          pB_out,
+        dock_structure = mdr.megadock_run(pdb_a,
+                                          pdb_b,
                                           dock_file,
                                           modeling_counter, output_dir)
 
@@ -227,7 +228,11 @@ def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]) -> int:
 
 @click.command()
 @click.version_option(version='1.0a')
-@click.option('--complex_pdb',
+@click.option('--pdb_a',
+              required=True,
+              type=click.Path(exists=True, path_type=Path),
+              help='')
+@click.option('--pdb_b',
               required=True,
               type=click.Path(exists=True, path_type=Path),
               help='')
@@ -254,14 +259,15 @@ def get_best_model_idx(xl_hits: List[int], xl_scores: List[float]) -> int:
               help='')
 @click.option('--cut_off',
               type=int,
-              default=35,
+              default=32,
               help='')
-def run_model(complex_pdb: Path,
+def run_model(pdb_a: Path,
+              pdb_b: Path,
               output_dir: Path,
               top_xls_file: Path,
               dock_file: Path,
               n_models: int = 10,
-              n_filters: int = 3, cut_off: int = 35):
+              n_filters: int = 3, cut_off: int = 32):
     """Runs the protein-protein docking and model filtering process.
 
     This function serves as the command-line interface for the docking workflow.
@@ -274,7 +280,7 @@ def run_model(complex_pdb: Path,
         dock_file (Path): Path to the docking parameter file for Megadock.
         n_models (int, optional): Number of models to generate in Megadock. Defaults to 10.
         n_filters (int, optional): Number of models to keep after filtering. Defaults to 3.
-        cut_off (int, optional): Distance cutoff for validating cross-links. Defaults to 35.
+        cut_off (int, optional): Distance cutoff for validating cross-links. Defaults to 32.
 
     Raises:
         ValueError: If invalid paths are provided for input files or output directory.
@@ -285,7 +291,8 @@ def run_model(complex_pdb: Path,
     (xl_files,
      pdb_files,
      xl_hits,
-     xl_scores) = modeling(complex_pdb,
+     xl_scores) = modeling(pdb_a,
+                           pdb_b,
                            top_xls_file,
                            output_dir, dock_file, cut_off, n_models, n_filters)
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import numpy as np
 from pathlib import Path
 from typing import List
 
@@ -9,6 +10,28 @@ from pandas import Series
 
 from . import fragment_generator
 
+
+def check_floats_in_integer_ranges(float_series, range_series, offset=0.01):
+    """
+    Checks if a Series of floats falls within ranges defined by integers in
+    another Series (integer ± offset).
+
+    Args:
+        float_series: Pandas Series of floats to be checked.
+        range_series: Pandas Series of integers defining the center of ranges.
+        offset: The offset around each integer to define the range.
+
+    Returns:
+        Pandas Series of booleans.
+    """
+
+    def is_in_range(value):
+        for center in range_series:
+            if center - offset <= value <= center + offset:
+                return True
+        return False
+
+    return float_series[float_series.apply(is_in_range)].index
 
 def mgf_writer(mgf_output_file: Path,
                series: Series) -> None:
@@ -49,9 +72,9 @@ def mgf_writer(mgf_output_file: Path,
 
     mgf_output_file.write(f'CHARGE={charge}\n')
 
-    for mz, intensity in series['ms2']:
+    ms2_array = np.array(series['ms2'])
 
-        mgf_output_file.write(f'{mz} {intensity}\n')
+    np.savetxt(mgf_output_file, ms2_array, delimiter=' ', fmt='%15.30f')
 
     mgf_output_file.write('END IONS\n')
 
@@ -92,17 +115,7 @@ def dda_filter(xl_list: List[str],
     # Read the MGF (MS/MS) file.
     mzml = pymzml.run.Reader(str(mzml_file))
 
-    id_list = []
-
-    rt_list = []
-
-    ms2_list = []
-
-    mz_list = []
-
-    i_list = []
-
-    charge_list = []
+    data = []
 
     for spectra in mzml:
 
@@ -110,59 +123,47 @@ def dda_filter(xl_list: List[str],
 
             for precursor in spectra.selected_precursors:
 
-                id_list.append(spectra.ID)
+                data.append({'spectra_id': spectra.ID,
+                             'mz': precursor['mz'],
+                             'i': precursor['i'],
+                             'charge': precursor['charge'],
+                             'rt': spectra.scan_time_in_minutes() * 60,
+                             'ms2': np.array(spectra.peaks('raw'))})
 
-                ms2_list.append(spectra.peaks('raw'))
+    df = pd.DataFrame(data)
 
-                rt_list.append(spectra.scan_time_in_minutes() * 60)
+    output_file = output_dir / f'{mzml_file.stem}_filtered.mgf'
 
-                mz_list.append(precursor['mz'])
+    xls_precursor_dict = {i: [] for i in range(3, 9)}
 
-                i_list.append(precursor['i'])
+    for xl in xls:
 
-                charge_list.append(precursor['charge'])
+        (precursor_dict,
+            *_) = fragment_generator.fragment_generator(xl,
+                                                        xlinker_mass,
+                                                        xlinker, ptm_type)
 
-    df = pd.DataFrame({'spectra_id': id_list,
-                       'mz': mz_list,
-                       'i': i_list,
-                       'charge': charge_list,
-                       'rt': rt_list, 'ms2': ms2_list})
+        for charge, mass_list in precursor_dict.items():
 
-    output_file = output_dir / f'{mzml_file.stem}_filtered.mzML'
+            xls_precursor_dict[charge].extend(mass_list)
 
-    index_memory = []
+    filter_index = []
+
+    for charge in range(3, 9):
+
+        float_series = df.loc[df['charge'] == charge]['mz']
+
+        range_series = xls_precursor_dict[charge]
+
+        index = check_floats_in_integer_ranges(float_series,
+                                               range_series, precursor_delta)
+
+        filter_index.extend(index.to_list())
 
     with open(output_file, 'w') as f:
 
-        for num_xl, xl in enumerate(xls):
+        for i in filter_index:
 
-            (precursor_dict,
-             fragment_all,
-             mz_light_all,
-             mz_heavy_all,
-             p1, p2) = fragment_generator.fragment_generator(xl,
-                                          xlinker_mass,
-                                          xlinker,
-                                          ptm_type)
-
-            for charge, mass_list in precursor_dict.items():
-
-                index = []
-
-                for mass in mass_list:
-
-                    index.extend(df.loc[(df['charge'] == charge) &
-                                        (df['mz'].between(mass-precursor_delta,
-                                                          mass+precursor_delta,
-                                                          'neither'))]\
-                                .index)
-
-                for df_i in index:
-
-                    if df_i not in index_memory:
-
-                        mgf_writer(mgf_output_file=f, series=df.loc[df_i])
-
-                        index_memory.append(df_i)
+            mgf_writer(f, df.loc[i])
 
     return output_file

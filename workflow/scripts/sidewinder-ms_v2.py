@@ -12,6 +12,7 @@ __email__ = 'joel.strobaek@gmail.com'
 
 
 import math
+import numpy as np
 import sqlite3
 from pathlib import Path
 from sqlalchemy import create_engine
@@ -24,6 +25,21 @@ from scipy.stats import zscore
 from utils import dda_filter_v2
 from utils import fig_maker
 from utils import fragment_generator
+
+
+# Constants:
+# Disuccinimidyl suberate:
+DSS_mass = 138.06808  # mass.calculate_mass(formula='C16H20N2O8')
+
+# Disuccinimidyl glutarate:
+DSG_mass = 96.02059
+
+# Ethylene glycol bis(succinimidyl succinate):
+EGS_mass = 226.04774
+
+xlinker_dict = {1: DSS_mass, 2: DSG_mass, 3: EGS_mass}
+
+xlinker_name_dict = {1: 'DSS', 2: 'DSG', 3: 'EGS'}
 
 
 # xl_file should potentially be changed to a top XL file...
@@ -67,18 +83,7 @@ def taxlink(all_xls_file: Path,
     Returns:
         Path: A handle to the opened SQLite database connection (closed upon script completion).
     """
-    # Disuccinimidyl suberate:
-    DSS_mass = 138.06808  # mass.calculate_mass(formula='C16H20N2O8')
-
-    # Disuccinimidyl glutarate:
-    DSG_mass = 96.02059
-
-    # Ethylene glycol bis(succinimidyl succinate):
-    EGS_mass = 226.04774
-
-    xlinker_dict = {1: DSS_mass,
-                    2: DSG_mass,
-                    3: EGS_mass}
+    xlinker_name = xlinker_name_dict[xlinker_type]
 
     xlinker_mass = xlinker_dict[xlinker_type]
 
@@ -108,7 +113,7 @@ def taxlink(all_xls_file: Path,
 
     # Create table:
     c.execute('''CREATE TABLE IF NOT EXISTS MS2Data
-                 (XL text, XL_mass real, XL_intensity real, mgf_file text, spectrum_id text, spectrum_num integer, \
+                 (XL text, linker text, XL_mass real, XL_intensity real, mgf_file text, spectrum_id text, spectrum_num integer, \
                  delta real, pre_charge integer, H_L text, fragSc integer, \
                  coverage real, covered_Frags text, covered_Mz text, covered_int text,\
                  main_Mz text, main_int text, count integer, S4b_score real, log_intensity real, S4b_zscore real, log_intensity_zscore real)''')
@@ -120,6 +125,8 @@ def taxlink(all_xls_file: Path,
     # Read in cleaned MGF file.
     mgf_dict_list = list(mgf.read(str(filtered_mgf_file)))
 
+    num_spectra = len(mgf_dict_list)
+
     output_file = output_dir / 'detected_spectra.txt'
 
     spec_dir = output_dir / 'top_spectra'
@@ -128,7 +135,7 @@ def taxlink(all_xls_file: Path,
 
     with open(output_file, 'w') as f:
 
-        for num_xl, xl in enumerate(all_xls_list):
+        for xl in all_xls_list:
 
             (precursor_dict,
              fragment_all,
@@ -139,10 +146,7 @@ def taxlink(all_xls_file: Path,
                                                          xlinker_mass,
                                                          xlinker_type, ptm_type)
 
-            mgf_spec_score = [0] * len(mgf_dict_list)
-
-            ## Considering all fragments and find the match peaks in MS/MS data
-            mgf_spec_list = [None] * len(mz_light_all)
+            spec_score = np.zeros(num_spectra, dtype=int)
 
             print(xl, file=f)
 
@@ -152,17 +156,22 @@ def taxlink(all_xls_file: Path,
 
                 spec_charge = spectra['params']['charge'][0]
 
-                if spec_charge in range (3,9):
+                if 3 <= spec_charge <= 8:
 
-                    mz_difference_Light = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:5])
+                    mz_difference_Light = (min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:5]))
 
                     mz_difference_Heavy = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][5:9])
 
-                    if (mz_difference_Light <= delta):
+                    if (mz_difference_Light <= delta
+                        or mz_difference_Heavy <= delta):
 
                         print(spectra['params']['title'], file=f)
 
-                        for num_mz, anymZ in enumerate(mz_light_all):
+                        mz_to_match = (mz_light_all
+                                       if mz_difference_Light <= delta
+                                       else mz_heavy_all)
+
+                        for num_mz, anymZ in enumerate(mz_to_match):
 
                             for y in range(len(spectra['m/z array'])):
 
@@ -170,9 +179,7 @@ def taxlink(all_xls_file: Path,
 
                                 if min_MZ <= delta:
 
-                                    maxintensity = max(spectra['intensity array'][0:])
-
-                                    mgf_spec_list[num_mz] = spectra
+                                    maxintensity = max(spectra['intensity array'])
 
                                     # Intensity-based scoring
                                     # of the detected peaks:
@@ -180,223 +187,174 @@ def taxlink(all_xls_file: Path,
 
                                     if intensity >= maxintensity*3/4:
 
-                                        mgf_spec_score[spec_idx] += 12
+                                        spec_score[spec_idx] += 12
 
                                     elif intensity >= maxintensity/2:
 
-                                        mgf_spec_score[spec_idx] += 8
+                                        spec_score[spec_idx] += 8
 
                                     elif intensity >= maxintensity/4:
 
-                                        mgf_spec_score[spec_idx] += 4
+                                        spec_score[spec_idx] += 4
 
                                     elif intensity >= intensity_filter:
 
-                                        mgf_spec_score[spec_idx] += 2
+                                        spec_score[spec_idx] += 2
 
-                    elif (mz_difference_Heavy <= delta):
+            max_score_idx = np.argmax(spec_score)
 
-                        print(spectra['params']['title'], file=f)
+            max_score = spec_score[max_score_idx]
 
-                        for num_mz, anymZ in enumerate(mz_heavy_all):
+            if max_score > 0:
 
-                            for y in range(len(spectra['m/z array'])):
+                spectra = mgf_dict_list[max_score_idx]
 
-                                min_MZ = abs(anymZ - spectra['m/z array'][y])
+                spectrum_id = "NA"
 
-                                if min_MZ <= delta:
+                spectrum_num = 0
 
-                                    maxintensity = max(spectra['intensity array'][0:])
+                peaks_num = 0
 
-                                    mgf_spec_list[num_mz] = spectra
+                coverage = 0.0
 
-                                    # Intensity-based scoring
-                                    # of the detected peaks:
-                                    intensity = spectra['intensity array'][y]
+                spec_pepmass = spectra['params']['pepmass'][0]
 
-                                    if intensity >= maxintensity*3/4:
+                spec_pepi = float(spectra['params']['pepintensity'])
 
-                                        mgf_spec_score[spec_idx] += 12
+                spec_charge = spectra['params']['charge'][0]
 
-                                    elif intensity >= maxintensity/2:
+                mz_difference_Light = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:5])
 
-                                        mgf_spec_score[spec_idx] += 8
+                mz_difference_Heavy = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][5:9])
 
-                                    elif intensity >= maxintensity/4:
+                heavy_light_flag = ('Light'
+                                    if mz_difference_Light <= delta
+                                    else 'Heavy')
 
-                                        mgf_spec_score[spec_idx] += 4
+                spectrum_id = spectra['params']['title']
 
-                                    elif intensity >= intensity_filter:
+                spectrum_num = max_score_idx
 
-                                        mgf_spec_score[spec_idx] += 2
+                peaks_num = len(spectra['m/z array'])
 
-            spectrum_id = "NA"
+                ## To send to fig_maker:
+                main_spectra = spectra['m/z array']
 
-            spectrum_num = 0
+                main_intensity = spectra['intensity array']
 
-            peaks_num = 0
+                mz_to_match = (mz_light_all
+                               if heavy_light_flag == 'Light' else mz_heavy_all)
 
-            coverage = 0.0
+                covered_Frags = []
 
-            for num_mgf, item_mgf in enumerate(mgf_dict_list):
+                covered_mz = []
 
-                if max(mgf_spec_score) != 0:
+                covered_intensity = []
 
-                    if mgf_spec_score[num_mgf] == max(mgf_spec_score):
+                for numz, mz in enumerate(mz_to_match):
 
-                        heavy_light_flag = ''
+                    min_MZ2 = min(abs(mz - y) for y in spectra['m/z array'])
 
-                        spec_pepmass = item_mgf['params']['pepmass'][0]
+                    if min_MZ2 <= delta:
 
-                        spec_pepi = float(item_mgf['params']['pepintensity'])
+                        covered_Frags.append(fragment_all[numz])
 
-                        spec_charge = item_mgf['params']['charge'][0]
+                        covered_mz.append(mz_to_match[numz])
 
-                        # mz_difference_Light = 1.000
+                for y_num, ymz in enumerate(covered_mz):
 
-                        # mz_difference_Heavy = 1.000
+                    for mz_num,anymz in enumerate(main_spectra):
 
-                        mz_difference_Light = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][0:5])
+                        min_MZ = abs(anymz - ymz)
 
-                        mz_difference_Heavy = min(abs(spec_pepmass - pre_mz) for pre_mz in precursor_dict[spec_charge][5:9])
+                        if min_MZ <= delta:
 
-                        spectrum_id = item_mgf['params']['title']
+                            if main_intensity[mz_num] != 0.0:
 
-                        spectrum_num = num_mgf
+                                covered_intensity.append(main_intensity[mz_num])
 
-                        peaks_num = len(item_mgf['m/z array'])
+                                break
 
-                        ## To send to fig_maker:
-                        main_spectra = item_mgf['m/z array']
+                ms2_ions = len(covered_Frags)
 
-                        main_intensity = item_mgf['intensity array']
+                if peaks_num != 0:
 
-                        covered_Frags = []
+                    coverage = (ms2_ions * 100) / peaks_num
 
-                        covered_mz = []
+                if (spectrum_id != 'NA' and len(covered_mz) >= 5):
 
-                        covered_intensity = []
+                    i_max = max(main_intensity)
 
-                        if (mz_difference_Light <= delta): # we fixed delta for precursor to 0.01
+                    i_norm_sum = sum([float(i) / i_max
+                                        for i in covered_intensity])
 
-                            heavy_light_flag = 'Light'
+                    S4b_score = (ms2_ions+i_norm_sum)/(len(p1)+len(p2))
 
-                            for numz, mz in enumerate(mz_light_all):
+                    log_intensity = math.log10(spec_pepi + 1)
 
-                                min_MZ2 = min(abs(mz - y) for y in item_mgf['m/z array'][0:])
-
-                                if min_MZ2 <= delta:
-
-                                    covered_Frags.append(fragment_all[numz])
-
-                                    covered_mz.append(mz_light_all[numz])
-
-                        elif (mz_difference_Heavy <= delta):
-
-                            heavy_light_flag = 'Heavy'
-
-                            for numz, mz in enumerate(mz_heavy_all):
-
-                                min_MZ2 = min(abs(mz - y) for y in item_mgf['m/z array'][0:])
-
-                                if min_MZ2 <= delta:
-
-                                    covered_Frags.append(fragment_all[numz])
-
-                                    covered_mz.append(mz_heavy_all[numz])
-
-                        for y_num, ymz in enumerate(covered_mz):
-
-                            for mz_num,anymz in enumerate(main_spectra):
-
-                                min_MZ = abs(anymz - ymz)
-
-                                if min_MZ <= delta:
-
-                                    if main_intensity[mz_num] != 0.0:
-
-                                        covered_intensity.append(main_intensity[mz_num])
-
-                                        break
-
-                        ms2_ions = len(covered_Frags)
-
-                        if peaks_num != 0:
-
-                            coverage = (ms2_ions * 100)/peaks_num
-
-                        if (spectrum_id != 'NA' and len(covered_mz) >= 5):
-
-                            i_max = max(main_intensity)
-
-                            i_norm_sum = sum([float(i) / i_max
-                                              for i in covered_intensity])
-
-                            S4b_score = (ms2_ions+i_norm_sum)/(len(p1)+len(p2))
-
-                            log_intensity = math.log10(spec_pepi + 1)
-
-                            c.execute("INSERT INTO MS2Data(XL, \
-                                                           XL_mass, \
-                                                           XL_intensity, \
-                                                           mgf_file, \
-                                                           spectrum_id, \
-                                                           spectrum_num, \
-                                                           delta, \
-                                                           pre_charge, \
-                                                           H_L, \
-                                                           fragSc, \
-                                                           coverage, \
-                                                           covered_Frags, \
-                                                           covered_Mz, \
-                                                           covered_int, \
-                                                           main_Mz, \
-                                                           main_int, \
-                                                           count, \
-                                                           S4b_score, \
-                                                           log_intensity) \
-                                       VALUES(?, \
-                                              ?, \
-                                              ?, \
-                                              ?, \
-                                              ?, \
-                                              ?, \
-                                              ?, \
-                                              ?, \
-                                              ?, \
-                                              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                                      (xl,
-                                       spec_pepmass,
-                                       spec_pepi,
-                                       str(filtered_mgf_file),
-                                       spectrum_id,
-                                       spectrum_num,
-                                       delta,
-                                       spec_charge,
-                                       heavy_light_flag,
-                                       max(mgf_spec_score),
-                                       coverage,
-                                       ",".join(str(x) for x in covered_Frags),
-                                       ",".join(str(w) for w in covered_mz),
-                                       ",".join(str(x)
-                                                for x in covered_intensity),
-                                       ",".join(str(x) for x in main_spectra),
-                                       ",".join(str(x)
-                                                for x in main_intensity),
-                                       len(covered_Frags),
-                                       S4b_score, log_intensity))
-
-                            conn.commit()
-
-                        if len(covered_mz) >= fig_threshold:
-
-                            fig_maker.fig_maker(main_spectra,
-                                                main_intensity,
-                                                covered_Frags,
-                                                covered_mz,
-                                                p1,
-                                                p2,
-                                                xl, num_mgf, delta, spec_dir)
+                    c.execute("INSERT INTO MS2Data(XL, \
+                                                    linker, \
+                                                    XL_mass, \
+                                                    XL_intensity, \
+                                                    mgf_file, \
+                                                    spectrum_id, \
+                                                    spectrum_num, \
+                                                    delta, \
+                                                    pre_charge, \
+                                                    H_L, \
+                                                    fragSc, \
+                                                    coverage, \
+                                                    covered_Frags, \
+                                                    covered_Mz, \
+                                                    covered_int, \
+                                                    main_Mz, \
+                                                    main_int, \
+                                                    count, \
+                                                    S4b_score, \
+                                                    log_intensity) \
+                                VALUES(?, \
+                                        ?, \
+                                        ?, \
+                                        ?, \
+                                        ?, \
+                                        ?, \
+                                        ?, \
+                                        ?, \
+                                        ?, \
+                                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (xl,
+                                xlinker_name,
+                                spec_pepmass,
+                                spec_pepi,
+                                str(filtered_mgf_file),
+                                spectrum_id,
+                                spectrum_num,
+                                delta,
+                                spec_charge,
+                                heavy_light_flag,
+                                max(spec_score),
+                                coverage,
+                                ",".join(str(x) for x in covered_Frags),
+                                ",".join(str(w) for w in covered_mz),
+                                ",".join(str(x)
+                                        for x in covered_intensity),
+                                ",".join(str(x) for x in main_spectra),
+                                ",".join(str(x)
+                                        for x in main_intensity),
+                                len(covered_Frags),
+                                S4b_score, log_intensity))
+
+                    conn.commit()
+
+                if len(covered_mz) >= fig_threshold:
+
+                    fig_maker.fig_maker(main_spectra,
+                                        main_intensity,
+                                        covered_Frags,
+                                        covered_mz,
+                                        p1,
+                                        p2,
+                                        xl, max_score_idx, delta, spec_dir)
 
     return conn
 
