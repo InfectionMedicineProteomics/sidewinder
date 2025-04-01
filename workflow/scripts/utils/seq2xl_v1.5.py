@@ -16,13 +16,10 @@ from pathlib import Path
 from typing import List
 
 import click
-from Bio import BiopythonParserWarning, SeqIO
-from Bio.PDB import PDBConstructWarning
+from Bio import BiopythonWarning, SeqIO
 
 
-warnings.simplefilter('ignore', BiopythonParserWarning)
-
-warnings.simplefilter('ignore', PDBConstructWarning)
+warnings.simplefilter('ignore', BiopythonWarning)
 
 
 def xl_generator(sequence: str,

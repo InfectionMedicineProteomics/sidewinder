@@ -19,7 +19,7 @@ __email__ = 'joel.strobaek@gmail.com'
 #                     target/binder.pdb
 # - MAKE A BETTER FOLDER STRUCTURE FOR THE OUTPUT
 # - REMOVE ALL THE HARD CODING!
-# - Refactor the scripts and workflow to actually make it modular...
+# - Refactor the scripts and workflow to actually make it fully modular...
 #       - Many of the steps are interwoven in the current iteration,
 #         which (e.g.) inhibits an easy change of docking software
 # - SAVE THE FILTERED MGF IN samples/filtered_mgf/
@@ -181,7 +181,7 @@ rule seq2xl:
         "--pdb_file2 {input.PDB_b} "
         "--output_dir {params.outdir}"
 
-rule megadock:
+rule molecular_docking:
     input:
         pdb_a = (rules.block_pdb.output.pdb_a
                  if BLOCK_FV else rules.pdb_handling.output.pdb_a),
@@ -225,7 +225,7 @@ rule megadock:
 
 # include: 'rules/data_module.smk'
 
-rule msconvert:
+rule data2mzML:
     # TODO:
     #   - Sort proper thermoRawFileParser inclusion
     input:
@@ -249,40 +249,39 @@ rule msconvert:
         " -o={params.outdir}"
         " -f=2"
 
-rule ms2:
-    # TODO: Speed up!
+rule CSM_annotation:
     input:
-        mzml = rules.msconvert.output.mzml,
+        mzml = rules.data2mzML.output.mzml,
         xls = rules.seq2xl.output
     output:
         sql = os.path.join(OUTDIR_BASE,
-                           'scoring_module',
+                           'data_module',
                            "{sample}",
                            "{binder}", "{target}", "ms2_results.sql"),
         img_dir = directory(os.path.join(OUTDIR_BASE,
-                                         'scoring_module',
+                                         'data_module',
                                          "{sample}",
                                          "{binder}",
                                          "{target}", "top_spectra")),
         top_xls = os.path.join(OUTDIR_BASE,
-                               'scoring_module',
+                               'data_module',
                                "{sample}",
                                "{binder}", "{target}", "top_xls.txt"),
         mgf_filt = os.path.join(OUTDIR_BASE,
-                                'scoring_module',
+                                'data_module',
                                 "{sample}",
                                 "{binder}",
                                 "{target}", "{sample}_filtered.mgf")
     params:
-        ms2_script = 'workflow/scripts/sidewinder-ms_v2.py',
+        ms_search_script = 'workflow/scripts/sidewinder-ms_v2.py',
         x_linker = get_linker_num,
         mass_delta_cutoff = 0.01,
         outdir = os.path.join(OUTDIR_BASE,
-                              'scoring_module', "{sample}", "{binder}", "{target}")
+                              'data_module', "{sample}", "{binder}", "{target}")
     conda:
         'envs/pyteomics_env.yml'
     shell:
-        "python3 {params.ms2_script} "
+        "python3 {params.ms_search_script} "
         "--mzml_file {input.mzml} "
         # "--mgf_file {input.mgf} "
         "--xl_file {input.xls} "
@@ -300,8 +299,8 @@ rule modeling:
     input:
         pdb_a = rules.pdb_handling.output.pdb_a,
         pdb_b = rules.pdb_handling.output.pdb_b,
-        top_xls = rules.ms2.output.top_xls,
-        dock_file = rules.megadock.output
+        top_xls = rules.CSM_annotation.output.top_xls,
+        dock_file = rules.molecular_docking.output
     output:
         top_model = os.path.join(OUTDIR_BASE,
                                  'scoring_module',
@@ -314,14 +313,15 @@ rule modeling:
         scores = os.path.join(OUTDIR_BASE,
                               'scoring_module',
                               "{sample}",
-                              "{binder}", "{target}", "lr_models/scores.csv")
+                              "{binder}", "{target}", "scores.csv")
     params:
         cut_off = config['distance_cut_off'],
         n_top_f = config['num_of_top_filters'],
         n_docks = config['model_samples'],
         modeling_script = 'workflow/scripts/sidewinder-model.py',
         outdir = os.path.join(OUTDIR_BASE,
-                              'scoring_module', "{sample}", "{binder}", "{target}")
+                              'scoring_module',
+                              "{sample}", "{binder}", "{target}")
     conda:
         'envs/biopython_env.yml'
     threads:

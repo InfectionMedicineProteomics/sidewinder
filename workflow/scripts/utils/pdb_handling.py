@@ -16,14 +16,12 @@ from pathlib import Path
 from subprocess import Popen, PIPE
 from typing import List
 
-from Bio import BiopythonParserWarning
-from Bio.PDB import PDBParser, PPBuilder, Structure, PDBConstructWarning
+from Bio import BiopythonWarning
+from Bio.PDB import PDBParser, PPBuilder, Structure
 import click
 
 
-warnings.simplefilter('ignore', BiopythonParserWarning)
-
-warnings.simplefilter('ignore', PDBConstructWarning)
+warnings.simplefilter('ignore', BiopythonWarning)
 
 
 def parse_pdb(pdb: Path,

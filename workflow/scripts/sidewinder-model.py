@@ -103,11 +103,15 @@ def modeling(pdb_a: Path,
 
     out_pdb_list = []
 
-    model_dir = output_dir / 'lr_models'
+    target = output_dir.parts[-1]
 
-    model_dir.mkdir(parents=True, exist_ok=True)
+    binder = output_dir.parts[-2]
 
-    job_output = model_dir / 'lr_model'
+    structure_module_path = output_dir.parents[3] / 'structure_module/docking'
+
+    job_output = structure_module_path / f'{binder}_+_{target}_decoys'
+
+    job_output.mkdir(parents=True, exist_ok=True)
 
     # Find a new pose justifying more XLs. Then we report the pose with MAX number of XLs.
     break_counter = 1
@@ -163,9 +167,9 @@ def modeling(pdb_a: Path,
     # Storing all the top models.
     for num_pos, struct in enumerate(structure_list):
 
-        pdb_name = str(job_output)+"_"+str(num_pos)+".pdb"
+        pdb_name = str(job_output)+"/"+str(num_pos)+".pdb"
 
-        xl_file_name = str(job_output)+"_"+str(num_pos)+"_xls.txt"
+        xl_file_name = str(job_output)+"/"+str(num_pos)+"_xls.txt"
 
         xls_list_out.append(xl_file_name)
 
@@ -183,7 +187,7 @@ def modeling(pdb_a: Path,
 
                 f.write(f'{item}\n')
 
-    score_file = model_dir / 'scores.csv'
+    score_file = output_dir / 'scores.csv'
 
     with open(score_file, 'w') as f:
 
