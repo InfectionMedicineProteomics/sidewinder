@@ -10,22 +10,22 @@ rule msconvert:
     # TODO:
     #   - Sort proper thermoRawFileParser inclusion
     input:
-        ms2 = os.path.join(config["ms2_files"],
-                           f"{{sample}}{config['ms2_ext']}")
+        ms2 = os.path.join(config['ms2_files'],
+                           f'{{sample}}{config["ms2_ext"]}')
     output:
         mzml = os.path.join(OUTDIR_BASE,
-                           sample_files, "ms2_convert", "{sample}.mzML")
+                           sample_files, 'mzML_files', '{sample}.mzML')
     params:
-        outdir = os.path.join(OUTDIR_BASE, sample_files, "ms2_convert"),
+        outdir = os.path.join(OUTDIR_BASE, sample_files, 'mzML_files'),
         thermoRawFileParser = config['thermoRawFileParser']
     conda:
-        f'{WD}/envs/mono_env.yml'
+        f'{WD}/envs/thermoRawFileParser_env.yml'
     shell:
         "[[ $(sed 's/^.*\.//' <(echo {input.ms2})) == mzML ]]"
         " &&"
         " ln -s {input.ms2} {output.mzml}"
         " ||"
-        " mono {params.thermoRawFileParser}"
+        " {params.thermoRawFileParser}"
         " -i={input.ms2}"
         " -o={params.outdir}"
         " -f=2"

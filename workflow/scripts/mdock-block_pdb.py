@@ -7,6 +7,7 @@ __email__ = 'joel.strobaek@gmail.com'
 
 
 import copy
+import json
 import shutil
 import warnings
 from dataclasses import dataclass
@@ -215,7 +216,7 @@ class fv_indexing:
     """
     fv: Path
 
-    scheme: Literal['chothia', 'imgt', 'kabat'] = 'chothia'
+    scheme: Literal['chothia', 'imgt', 'kabat'] = 'imgt'
 
     def __post_init__(self):
 
@@ -271,13 +272,20 @@ class fv_indexing:
               required=True,
               type=click.Path(exists=True, path_type=Path),
               help='Path to Sidewinder-MS edited single chain antibody Fv .pdb')
+@click.option('--annotation_scheme',
+              required=False,
+              type=click.Choice(['chothia', 'imgt', 'kabat'],
+                                case_sensitive=False),
+              help='Numbering scheme for CDR annotation. Default: imgt',
+              default='imgt')
 @click.option('--output_dir',
               '-o',
               required=True,
               type=click.Path(path_type=Path),
               help='Path to output directory')
 def block_fv_pdb(multi_chain_pdb: Path,
-                 single_chain_pdb: Path, output_dir: Path):
+                 single_chain_pdb: Path,
+                 annotation_scheme: string, output_dir: Path):
     """Blocks residues in a single-chain Fv PDB file for MegaDock, focusing on CDRs.
 
     This function prepares a PDB file for MegaDock by blocking specific residues
@@ -314,7 +322,7 @@ def block_fv_pdb(multi_chain_pdb: Path,
 
     output_file_name = single_chain_pdb.stem
 
-    fv_index = fv_indexing(multi_chain_pdb, 'chothia')
+    fv_index = fv_indexing(multi_chain_pdb, annotation_scheme.lower())
 
     blocker = block_pdb(single_chain_pdb, output_dir)
 
@@ -367,6 +375,12 @@ def block_fv_pdb(multi_chain_pdb: Path,
     shutil.copy(str(tmp_out), final_out)
 
     tmp_out.unlink()
+
+    fv_annotation_file = f'{output_file_name}_fv_{annotation_scheme}.json'
+
+    with open(output_dir / fv_annotation_file, 'w') as f_out:
+
+        json.dump(fv_index.chain_annotations, f_out, indent=4)
 
 
 if __name__ == "__main__":

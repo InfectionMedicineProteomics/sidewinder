@@ -14,6 +14,9 @@ __author__ = 'Joel Ströbaek'
 __email__ = 'joel.strobaek@gmail.com'
 
 
+SCHEME = config['cdr_annotation_scheme']
+
+
 rule pdb_handling:
     input:
         PDB_a = lambda wildcards: str(config["antibody_dir"])  + '/' + wildcards.antibody + '.pdb',
@@ -50,8 +53,13 @@ if BLOCK_FV:
                                  docking_files,
                                  "{antigen}_+_{antibody}",
                                  "{antibody}_blocked.pdb")
+            json = os.path.join(OUTDIR_BASE,
+                                  docking_files,
+                                  "{antigen}_+_{antibody}",
+                                  f'{{antibody}}_fv_{SCHEME}.json')
         params:
             fv_blocking = f'{WD}/scripts/mdock-block_pdb.py',
+            annotation_scheme = SCHEME,
             outdir = os.path.join(OUTDIR_BASE,
                                   docking_files, "{antigen}_+_{antibody}")
         conda:
@@ -60,6 +68,7 @@ if BLOCK_FV:
             "python3 {params.fv_blocking} "
             "--multi_chain_pdb {input.mc_pdb} "
             "--single_chain_pdb {input.sc_pdb} "
+            "--annotation_scheme {params.annotation_scheme} "
             "--output_dir {params.outdir}"
 
 rule seq2xl:

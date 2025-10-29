@@ -245,7 +245,7 @@ include: 'rules/structure_module.smk'
 #         "-N {params.predictions} "
 #         "&> {log.logfile}"
 
-# include: 'rules/data_module.smk'
+include: 'rules/data_module.smk'
 
 # rule data2mzML:
 #     # TODO:

@@ -19,6 +19,7 @@ model_samples: 100  # Cheetah-default=10, max=docking_samples
 docking_samples: 2000  # Default 2000
 
 block_antibody_non_CDR: True
+cdr_annotation_scheme: 'imgt'  # Options: chothia, imgt, kabat
 
 ## STATIC configuration (NOT user specified):
 thermoRawFileParser: '/srv/data1/jo0348st/src/thermoRawFileParser/ThermoRawFileParser'
