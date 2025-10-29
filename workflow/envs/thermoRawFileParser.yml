@@ -1,0 +1,5 @@
+name: thermoRawFileParser
+channels:
+  - conda-forge
+dependencies:
+  - dotnet=8.0
