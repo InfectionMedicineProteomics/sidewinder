@@ -15,8 +15,8 @@ __email__ = 'joel.strobaek@gmail.com'
 #       - dock_tmp.pdb / lig_tmp.pdb
 #       - pdb_A/B.pdb
 # - Add some subfolders to the results dir
-#       - supp_files: all_xls.txt, target/binder_seq.txt, detected_spectra.txt,
-#                     target/binder.pdb
+#       - supp_files: all_xls.txt, antibody/antigen_seq.txt, detected_spectra.txt,
+#                     antibody/antigen.pdb
 # - MAKE A BETTER FOLDER STRUCTURE FOR THE OUTPUT
 # - REMOVE ALL THE HARD CODING!
 # - Refactor the scripts and workflow to actually make it fully modular...
@@ -41,12 +41,12 @@ def get_linker_num(wildcards):
                    'ESG': 3}
 
     linker_dict = {f'{b}_{t}_{s}': linker_nums[l]
-                   for b, t, s, l in zip(BINDERS_LIST,
-                                         TARGETS_LIST,
+                   for b, t, s, l in zip(ANTIGEN_LIST,
+                                         ANTIBODY_LIST,
                                          SAMPLES,
                                          LINKERS)}
 
-    key = '_'.join([wildcards.binder, wildcards.target, wildcards.sample])
+    key = '_'.join([wildcards.antigen, wildcards.antibody, wildcards.sample])
 
     try:
 
@@ -59,13 +59,13 @@ def get_linker_num(wildcards):
 
 min_version("6.0")  # Min version for using modules.
 
-configfile: "config/config.yml"
+configfile: "config/config_2.yml"
 
 
 WD = Path(workflow.snakefile).parent
 
 # Convert config paths from string to Path objects.
-config_paths = ['output_dir', 'targets_dir', 'binders_dir', 'ms2_file']
+config_paths = ['output_dir', 'antibody_dir', 'antigen_dir', 'ms2_file']
 
 config = {k: (v if k not in config_paths else Path(v).resolve())
           for k, v in config.items()}
@@ -74,265 +74,287 @@ OUTDIR_BASE = config['output_dir']
 
 BLOCK_FV = bool(config['block_antibody_non_CDR'])
 
-table_file = config.get('table_file', 'config/entries.csv')
+table_file = config.get('table_file', 'config/entries_2.csv')
 
 df = pd.read_csv(table_file)
 
-BINDERS_LIST, TARGETS_LIST, SAMPLES, LINKERS = df.values.T
+ANTIGEN_LIST, ANTIBODY_LIST, SAMPLES, LINKERS = df.values.T
 
-BEST_PDB = ['best_model.pdb'] * len(BINDERS_LIST)
+# --- ADD THIS CODE ---
+# Create a new dataframe containing only unique antigen-antibody pairs
+unique_pairs_df = df[['antigen', 'antibody']].drop_duplicates()
+# Create new lists from this unique dataframe
+UNIQUE_ANTIGEN_LIST = unique_pairs_df['antigen'].to_list()
+UNIQUE_ANTIBODY_LIST = unique_pairs_df['antibody'].to_list()
+# --- END OF ADDED CODE ---
 
-BEST_TXT = ['best_model_xls.txt'] * len(BINDERS_LIST)
+BEST_PDB = ['best_model.pdb'] * len(ANTIGEN_LIST)
+
+BEST_TXT = ['best_model_xls.txt'] * len(ANTIGEN_LIST)
+
+docking_files = 'structure_module/docking'
 
 
 rule all:
     input:
-        expand(
-            os.path.join(
-                OUTDIR_BASE, 'scoring_module',
-                "{sample}",
-                "{binder}",
-                "{target}",
-                "{best_pdb}"
-             ),
-             zip,
-             sample=SAMPLES,
-             binder=BINDERS_LIST,
-             target=TARGETS_LIST,
-             best_pdb=BEST_PDB
-        ),
-        expand(
-            os.path.join(
-                OUTDIR_BASE, 'scoring_module',
-                "{sample}",
-                "{binder}",
-                "{target}",
-                "{best_txt}"
-             ),
-             zip,
-             sample=SAMPLES,
-             binder=BINDERS_LIST,
-             target=TARGETS_LIST,
-             best_txt=BEST_TXT
-        )
+        expand(os.path.join(OUTDIR_BASE,
+                             docking_files,
+                             "{antigen}_+_{antibody}",
+                             "{antigen}_+_{antibody}_megadock.done"),
+               zip,
+               antigen=UNIQUE_ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST),
+        expand(os.path.join(OUTDIR_BASE,
+                             docking_files,
+                             "{antigen}_+_{antibody}",
+                             "{antigen}_+_{antibody}.xls"),
+               zip,
+               antigen=UNIQUE_ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST)
+        # expand(
+        #     os.path.join(
+        #         OUTDIR_BASE, 'scoring_module',
+        #         "{sample}",
+        #         "{antigen}",
+        #         "{antibody}",
+        #         "{best_pdb}"
+        #      ),
+        #      zip,
+        #      sample=SAMPLES,
+        #      antigen=ANTIGEN_LIST,
+        #      antibody=ANTIBODY_LIST,
+        #      best_pdb=BEST_PDB
+        # ),
+        # expand(
+        #     os.path.join(
+        #         OUTDIR_BASE, 'scoring_module',
+        #         "{sample}",
+        #         "{antigen}",
+        #         "{antibody}",
+        #         "{best_txt}"
+        #      ),
+        #      zip,
+        #      sample=SAMPLES,
+        #      antigen=ANTIGEN_LIST,
+        #      antibody=ANTIBODY_LIST,
+        #      best_txt=BEST_TXT
+        # )
 
-# include: 'rules/structure_module.smk'
+include: 'rules/structure_module.smk'
 
-rule pdb_handling:
-    input:
-        PDB_a = ancient(f'{config["targets_dir"]}/{{target}}.pdb'),
-        # PDB_a = lambda wildcards: str(config["targets_dir"])  + '/' + wildcards.target + '.pdb',
-        PDB_b = ancient(f'{config["binders_dir"]}/{{binder}}.pdb')
-        # PDB_b = lambda wildcards: str(config["binders_dir"])  + '/' + wildcards.binder + '.pdb'
-    output:
-        pdb_a = os.path.join(OUTDIR_BASE, 'structure_module/structures',
-                           '{binder}_+_{target}', "{target}.pdb"),
-        pdb_b = os.path.join(OUTDIR_BASE, 'structure_module/structures',
-                           '{binder}_+_{target}', "{binder}.pdb")
-    params:
-        pdb_handling = f'{WD}/scripts/utils/pdb_handling.py',
-        outdir = f'{OUTDIR_BASE}/structure_module/structures/{{binder}}_+_{{target}}'
-    conda:
-        f'{WD}/envs/biopython_env.yml'
-    shell:
-        "python3 {params.pdb_handling} "
-        "--pdb1 {input.PDB_a} "
-        "--pdb2 {input.PDB_b} "
-        "--output_dir {params.outdir}"
+# rule pdb_handling:
+#     input:
+#         PDB_a = ancient(f'{config["antibody_dir"]}/{{antibody}}.pdb'),
+#         # PDB_a = lambda wildcards: str(config["antibody_dir"])  + '/' + wildcards.antibody + '.pdb',
+#         PDB_b = ancient(f'{config["antigen_dir"]}/{{antigen}}.pdb')
+#         # PDB_b = lambda wildcards: str(config["antigen_dir"])  + '/' + wildcards.antigen + '.pdb'
+#     output:
+#         pdb_a = os.path.join(OUTDIR_BASE, 'structure_module/structures',
+#                            '{antigen}_+_{antibody}', "{antibody}.pdb"),
+#         pdb_b = os.path.join(OUTDIR_BASE, 'structure_module/structures',
+#                            '{antigen}_+_{antibody}', "{antigen}.pdb")
+#     params:
+#         pdb_handling = f'{WD}/scripts/utils/pdb_handling.py',
+#         outdir = f'{OUTDIR_BASE}/structure_module/structures/{{antigen}}_+_{{antibody}}'
+#     conda:
+#         f'{WD}/envs/biopython_env.yml'
+#     shell:
+#         "python3 {params.pdb_handling} "
+#         "--pdb1 {input.PDB_a} "
+#         "--pdb2 {input.PDB_b} "
+#         "--output_dir {params.outdir}"
 
-if BLOCK_FV:
-    # TODO:
-    #   - Save process to SQLite DB and make output temporary.
-    rule block_pdb:
-        input:
-            mc_pdb = rules.pdb_handling.input.PDB_a,
-            sc_pdb = rules.pdb_handling.output.pdb_a
-        output:
-            pdb_a = os.path.join(OUTDIR_BASE,
-                                 'structure_module/structures',
-                                 '{binder}_+_{target}',
-                                 "{target}_blocked.pdb")
-        params:
-            fv_blocking = f'{WD}/scripts/mdock-block_pdb.py',
-            outdir = f'{OUTDIR_BASE}/structure_module/structures/{{binder}}_+_{{target}}'
-        conda:
-            f'{WD}/envs/biopython_env.yml'
-        shell:
-            "python3 {params.fv_blocking} "
-            "--multi_chain_pdb {input.mc_pdb} "
-            "--single_chain_pdb {input.sc_pdb} "
-            "--output_dir {params.outdir}"
+# if BLOCK_FV:
+#     # TODO:
+#     #   - Save process to SQLite DB and make output temporary.
+#     rule block_pdb:
+#         input:
+#             mc_pdb = rules.pdb_handling.input.PDB_a,
+#             sc_pdb = rules.pdb_handling.output.pdb_a
+#         output:
+#             pdb_a = os.path.join(OUTDIR_BASE,
+#                                  'structure_module/structures',
+#                                  '{antigen}_+_{antibody}',
+#                                  "{antibody}_blocked.pdb")
+#         params:
+#             fv_blocking = f'{WD}/scripts/mdock-block_pdb.py',
+#             outdir = f'{OUTDIR_BASE}/structure_module/structures/{{antigen}}_+_{{antibody}}'
+#         conda:
+#             f'{WD}/envs/biopython_env.yml'
+#         shell:
+#             "python3 {params.fv_blocking} "
+#             "--multi_chain_pdb {input.mc_pdb} "
+#             "--single_chain_pdb {input.sc_pdb} "
+#             "--output_dir {params.outdir}"
 
-rule seq2xl:
-    input:
-        PDB_a = rules.pdb_handling.input.PDB_a,
-        PDB_b = rules.pdb_handling.input.PDB_b
-    output:
-        os.path.join(OUTDIR_BASE,
-                     'structure_module', "{binder}_+_{target}.xls")
-    params:
-        seq2xl = f'{WD}/scripts/utils/seq2xl_v1.5.py',
-        outdir = f'{OUTDIR_BASE}/structure_module'
-    conda:
-        f'{WD}/envs/biopython_env.yml'
-    shell:
-        "python3 {params.seq2xl} "
-        "--pdb_file1 {input.PDB_a} "
-        "--pdb_file2 {input.PDB_b} "
-        "--output_dir {params.outdir}"
+# rule seq2xl:
+#     input:
+#         PDB_a = rules.pdb_handling.input.PDB_a,
+#         PDB_b = rules.pdb_handling.input.PDB_b
+#     output:
+#         os.path.join(OUTDIR_BASE,
+#                      'structure_module', "{antigen}_+_{antibody}.xls")
+#     params:
+#         seq2xl = f'{WD}/scripts/utils/seq2xl_v1.5.py',
+#         outdir = f'{OUTDIR_BASE}/structure_module'
+#     conda:
+#         f'{WD}/envs/biopython_env.yml'
+#     shell:
+#         "python3 {params.seq2xl} "
+#         "--pdb_file1 {input.PDB_a} "
+#         "--pdb_file2 {input.PDB_b} "
+#         "--output_dir {params.outdir}"
 
-rule molecular_docking:
-    input:
-        pdb_a = (rules.block_pdb.output.pdb_a
-                 if BLOCK_FV else rules.pdb_handling.output.pdb_a),
-        pdb_b = rules.pdb_handling.output.pdb_b
-    output:
-        os.path.join(OUTDIR_BASE,
-                     'structure_module/docking',
-                     "{binder}_+_{target}_megadock.out")
-    params:
-        # megadock = '/opt/MEGADOCK/megadock-gpu',  # GPU
-        megadock = '/usr/local/megadock/megadock-4.1.1/megadock',  # CPU
-        predictions = config['docking_samples'],
-        # pdb_a = os.path.join(OUTDIR_BASE,
-        #                      docking_files,
-        #                      "{binder}", "{target}", "chain_A_blocked.pdb")
-        #         if BLOCK_FV else
-        #         os.path.join(OUTDIR_BASE,
-        #                      docking_files,
-        #                      "{binder}", "{target}", "chain_A.pdb"),
-        # pdb_b = os.path.join(OUTDIR_BASE,
-        #                      docking_files,
-        #                      "{binder}", "{target}", "chain_B.pdb")
-    singularity:
-        # 'workflow/envs/megadock_4.1.4-gpu.sif'  # GPU
-        'workflow/envs/megadock.sif'  # CPU
-    threads:
-        max(1, int(workflow.cores/1))
-    resources:
-        nvidia_gpu=4
-    log:
-        logfile = os.path.join(OUTDIR_BASE,
-                               'structure_module/docking',
-                               '{binder}_+_{target}.log')
-    shell:
-        "{params.megadock} "
-        "-R {input.pdb_a} "
-        "-L {input.pdb_b} "
-        "-o {output} "
-        "-N {params.predictions} "
-        "&> {log.logfile}"
+# rule molecular_docking:
+#     input:
+#         pdb_a = (rules.block_pdb.output.pdb_a
+#                  if BLOCK_FV else rules.pdb_handling.output.pdb_a),
+#         pdb_b = rules.pdb_handling.output.pdb_b
+#     output:
+#         os.path.join(OUTDIR_BASE,
+#                      'structure_module/docking',
+#                      "{antigen}_+_{antibody}_megadock.out")
+#     params:
+#         # megadock = '/opt/MEGADOCK/megadock-gpu',  # GPU
+#         megadock = '/usr/local/megadock/megadock-4.1.1/megadock',  # CPU
+#         predictions = config['docking_samples'],
+#         # pdb_a = os.path.join(OUTDIR_BASE,
+#         #                      docking_files,
+#         #                      "{antigen}", "{antibody}", "chain_A_blocked.pdb")
+#         #         if BLOCK_FV else
+#         #         os.path.join(OUTDIR_BASE,
+#         #                      docking_files,
+#         #                      "{antigen}", "{antibody}", "chain_A.pdb"),
+#         # pdb_b = os.path.join(OUTDIR_BASE,
+#         #                      docking_files,
+#         #                      "{antigen}", "{antibody}", "chain_B.pdb")
+#     singularity:
+#         # 'workflow/envs/megadock_4.1.4-gpu.sif'  # GPU
+#         'workflow/envs/megadock.sif'  # CPU
+#     threads:
+#         max(1, int(workflow.cores/1))
+#     resources:
+#         nvidia_gpu=4
+#     log:
+#         logfile = os.path.join(OUTDIR_BASE,
+#                                'structure_module/docking',
+#                                '{antigen}_+_{antibody}.log')
+#     shell:
+#         "{params.megadock} "
+#         "-R {input.pdb_a} "
+#         "-L {input.pdb_b} "
+#         "-o {output} "
+#         "-N {params.predictions} "
+#         "&> {log.logfile}"
 
 # include: 'rules/data_module.smk'
 
-rule data2mzML:
-    # TODO:
-    #   - Sort proper thermoRawFileParser inclusion
-    input:
-        ms2 = os.path.join(config["ms2_files"],
-                           f"{{sample}}{config['ms2_ext']}")
-    output:
-        mzml = os.path.join(OUTDIR_BASE,
-                           'data_module', "input_mzML", "{sample}.mzML")
-    params:
-        outdir = os.path.join(OUTDIR_BASE, 'data_module', "input_mzML"),
-        thermoRawFileParser = config['thermoRawFileParser']
-    conda:
-        'envs/mono_env.yml'
-    shell:
-        "[[ $(sed 's/^.*\.//' <(echo {input.ms2})) == mzML ]]"
-        " &&"
-        " ln -s {input.ms2} {output.mzml}"
-        " ||"
-        " mono {params.thermoRawFileParser}"
-        " -i={input.ms2}"
-        " -o={params.outdir}"
-        " -f=2"
+# rule data2mzML:
+#     # TODO:
+#     #   - Sort proper thermoRawFileParser inclusion
+#     input:
+#         ms2 = os.path.join(config["ms2_files"],
+#                            f"{{sample}}{config['ms2_ext']}")
+#     output:
+#         mzml = os.path.join(OUTDIR_BASE,
+#                            'data_module', "input_mzML", "{sample}.mzML")
+#     params:
+#         outdir = os.path.join(OUTDIR_BASE, 'data_module', "input_mzML"),
+#         thermoRawFileParser = config['thermoRawFileParser']
+#     conda:
+#         'envs/mono_env.yml'
+#     shell:
+#         "[[ $(sed 's/^.*\.//' <(echo {input.ms2})) == mzML ]]"
+#         " &&"
+#         " ln -s {input.ms2} {output.mzml}"
+#         " ||"
+#         " mono {params.thermoRawFileParser}"
+#         " -i={input.ms2}"
+#         " -o={params.outdir}"
+#         " -f=2"
 
-rule CSM_annotation:
-    input:
-        mzml = rules.data2mzML.output.mzml,
-        xls = rules.seq2xl.output
-    output:
-        sql = os.path.join(OUTDIR_BASE,
-                           'data_module',
-                           "{sample}",
-                           "{binder}", "{target}", "ms2_results.sql"),
-        img_dir = directory(os.path.join(OUTDIR_BASE,
-                                         'data_module',
-                                         "{sample}",
-                                         "{binder}",
-                                         "{target}", "top_spectra")),
-        top_xls = os.path.join(OUTDIR_BASE,
-                               'data_module',
-                               "{sample}",
-                               "{binder}", "{target}", "top_xls.txt"),
-        mgf_filt = os.path.join(OUTDIR_BASE,
-                                'data_module',
-                                "{sample}",
-                                "{binder}",
-                                "{target}", "{sample}_filtered.mgf")
-    params:
-        ms_search_script = 'workflow/scripts/sidewinder-ms_v2.py',
-        x_linker = get_linker_num,
-        mass_delta_cutoff = 0.01,
-        outdir = os.path.join(OUTDIR_BASE,
-                              'data_module', "{sample}", "{binder}", "{target}")
-    conda:
-        'envs/pyteomics_env.yml'
-    shell:
-        "python3 {params.ms_search_script} "
-        "--mzml_file {input.mzml} "
-        # "--mgf_file {input.mgf} "
-        "--xl_file {input.xls} "
-        "--x_linker {params.x_linker} "
-        "--mass_delta_cutoff {params.mass_delta_cutoff} "
-        "--output_dir {params.outdir}"
+# rule CSM_annotation:
+#     input:
+#         mzml = rules.data2mzML.output.mzml,
+#         xls = rules.seq2xl.output
+#     output:
+#         sql = os.path.join(OUTDIR_BASE,
+#                            'data_module',
+#                            "{sample}",
+#                            "{antigen}", "{antibody}", "ms2_results.sql"),
+#         img_dir = directory(os.path.join(OUTDIR_BASE,
+#                                          'data_module',
+#                                          "{sample}",
+#                                          "{antigen}",
+#                                          "{antibody}", "top_spectra")),
+#         top_xls = os.path.join(OUTDIR_BASE,
+#                                'data_module',
+#                                "{sample}",
+#                                "{antigen}", "{antibody}", "top_xls.txt"),
+#         mgf_filt = os.path.join(OUTDIR_BASE,
+#                                 'data_module',
+#                                 "{sample}",
+#                                 "{antigen}",
+#                                 "{antibody}", "{sample}_filtered.mgf")
+#     params:
+#         ms_search_script = 'workflow/scripts/sidewinder-ms_v2.py',
+#         x_linker = get_linker_num,
+#         mass_delta_cutoff = 0.01,
+#         outdir = os.path.join(OUTDIR_BASE,
+#                               'data_module', "{sample}", "{antigen}", "{antibody}")
+#     conda:
+#         'envs/pyteomics_env.yml'
+#     shell:
+#         "python3 {params.ms_search_script} "
+#         "--mzml_file {input.mzml} "
+#         # "--mgf_file {input.mgf} "
+#         "--xl_file {input.xls} "
+#         "--x_linker {params.x_linker} "
+#         "--mass_delta_cutoff {params.mass_delta_cutoff} "
+#         "--output_dir {params.outdir}"
 
 # include: 'rules/scoring_module.smk'
 
-rule modeling:
-    # TODO:
-    #   - Save euclidean distances to file
-    #       - Include aa-numbering and xyz-coord anchors
-    #   - Set container image from config.
-    input:
-        pdb_a = rules.pdb_handling.output.pdb_a,
-        pdb_b = rules.pdb_handling.output.pdb_b,
-        top_xls = rules.CSM_annotation.output.top_xls,
-        dock_file = rules.molecular_docking.output
-    output:
-        top_model = os.path.join(OUTDIR_BASE,
-                                 'scoring_module',
-                                 "{sample}",
-                                 "{binder}", "{target}", "best_model.pdb" ),
-        top_xls = os.path.join(OUTDIR_BASE,
-                               'scoring_module',
-                               "{sample}",
-                               "{binder}", "{target}", "best_model_xls.txt"),
-        scores = os.path.join(OUTDIR_BASE,
-                              'scoring_module',
-                              "{sample}",
-                              "{binder}", "{target}", "scores.csv")
-    params:
-        cut_off = config['distance_cut_off'],
-        n_top_f = config['num_of_top_filters'],
-        n_docks = config['model_samples'],
-        modeling_script = 'workflow/scripts/sidewinder-model.py',
-        outdir = os.path.join(OUTDIR_BASE,
-                              'scoring_module',
-                              "{sample}", "{binder}", "{target}")
-    conda:
-        'envs/biopython_env.yml'
-    threads:
-        round(workflow.cores * 0.10)
-    shell:
-        "python3 {params.modeling_script} "
-        "--pdb_a {input.pdb_a} "
-        "--pdb_b {input.pdb_b} "
-        "--output_dir {params.outdir} "
-        "--top_xls_file {input.top_xls} "
-        "--dock_file {input.dock_file} "
-        "--n_models {params.n_docks} "
-        "--n_filters {params.n_top_f} "
-        "--cut_off {params.cut_off}"
+# rule modeling:
+#     # TODO:
+#     #   - Save euclidean distances to file
+#     #       - Include aa-numbering and xyz-coord anchors
+#     #   - Set container image from config.
+#     input:
+#         pdb_a = rules.pdb_handling.output.pdb_a,
+#         pdb_b = rules.pdb_handling.output.pdb_b,
+#         top_xls = rules.CSM_annotation.output.top_xls,
+#         dock_file = rules.molecular_docking.output
+#     output:
+#         top_model = os.path.join(OUTDIR_BASE,
+#                                  'scoring_module',
+#                                  "{sample}",
+#                                  "{antigen}", "{antibody}", "best_model.pdb" ),
+#         top_xls = os.path.join(OUTDIR_BASE,
+#                                'scoring_module',
+#                                "{sample}",
+#                                "{antigen}", "{antibody}", "best_model_xls.txt"),
+#         scores = os.path.join(OUTDIR_BASE,
+#                               'scoring_module',
+#                               "{sample}",
+#                               "{antigen}", "{antibody}", "scores.csv")
+#     params:
+#         cut_off = config['distance_cut_off'],
+#         n_top_f = config['num_of_top_filters'],
+#         n_docks = config['model_samples'],
+#         modeling_script = 'workflow/scripts/sidewinder-model.py',
+#         outdir = os.path.join(OUTDIR_BASE,
+#                               'scoring_module',
+#                               "{sample}", "{antigen}", "{antibody}")
+#     conda:
+#         'envs/biopython_env.yml'
+#     threads:
+#         round(workflow.cores * 0.10)
+#     shell:
+#         "python3 {params.modeling_script} "
+#         "--pdb_a {input.pdb_a} "
+#         "--pdb_b {input.pdb_b} "
+#         "--output_dir {params.outdir} "
+#         "--top_xls_file {input.top_xls} "
+#         "--dock_file {input.dock_file} "
+#         "--n_models {params.n_docks} "
+#         "--n_filters {params.n_top_f} "
+#         "--cut_off {params.cut_off}"

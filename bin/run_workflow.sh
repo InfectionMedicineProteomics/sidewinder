@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-export XDG_CACHE_HOME=/srv/data1/home/jo0348st/.cache
+export XDG_CACHE_HOME=/srv/data1/jo0348st/.cache
 
-export TMPDIR=/srv/data1/home/jo0348st/.tmp
+export TMPDIR=/srv/data1/jo0348st/.tmp
 
 # Add -k to continue with independant jobs.
 snakemake \
-    --cores 80 \
+    --cores 46 \
     --use-conda \
     --use-singularity \
     --singularity-args "--nv --bind /srv/data1" \

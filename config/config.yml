@@ -24,4 +24,4 @@ block_antibody_non_CDR: True
 
 ## STATIC configuration (NOT user specified):
 
-thermoRawFileParser: '/srv/data1/home/jo0348st/src/thermoRawFileParser/ThermoRawFileParser.exe'
+thermoRawFileParser: '/srv/data1/jo0348st/src/thermoRawFileParser/ThermoRawFileParser'

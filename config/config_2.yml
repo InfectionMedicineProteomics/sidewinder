@@ -1,17 +1,17 @@
 ## USER configurable options:
 
 # Default output_dir: 'results/{date}'
-output_dir: '/srv/data1/home/jo0348st/projects/2023-di_heusel_m1_mAbs/results/txms/240906-m1_anchorless_scFab'
+output_dir: '/srv/data1/jo0348st/projects/2025-dt_ply_mAbs/sidewinder_results/2509_testing'
 
-# Antibody dir:
-targets_dir: '/srv/data1/home/jo0348st/projects/2023-di_heusel_m1_mAbs/results/colabfold/240831_scaffold_mAbs/relaxed_pdbs/sc-mAbs'
+# Target dir:
+antibody_dir: '/srv/data1/jo0348st/projects/2025-dt_ply_mAbs/colabfold_results/6E5/relaxed'
 
-# Antigen dir:
-binders_dir: '/srv/data1/home/jo0348st/projects/2023-di_heusel_m1_mAbs/results/colabfold/240831_scaffold_mAbs/relaxed_pdbs/m1'
+# Binder dir:
+antigen_dir: '/srv/data1/jo0348st/data/2025-dt_ply_mAbs/pdb/ply'
 
 # Path where all samples are stored. Valid formats: [raw, mzml, mgf]
-ms2_files:  '/srv/data1/home/jo0348st/data/2023-di_heusel_m1_mAbs/xlms/candidate_xlms/mzML'
-ms2_ext: '.mzML'
+ms2_files:  '/srv/data1/jo0348st/data/2025-dt_ply_mAbs/msms/raw'
+ms2_ext: '.raw'
 
 distance_cut_off: 32  # In Ångström
 num_of_top_filters: 10  # Models to keep
@@ -20,9 +20,5 @@ docking_samples: 2000  # Default 2000
 
 block_antibody_non_CDR: True
 
-# Options: 1=DSS, 2=DSG, 3=EGS
-x_linker: 1  # Move option to CSV!
-
 ## STATIC configuration (NOT user specified):
-
-thermoRawFileParser: '/srv/data1/home/jo0348st/src/thermoRawFileParser/ThermoRawFileParser.exe'
+thermoRawFileParser: '/srv/data1/jo0348st/src/thermoRawFileParser/ThermoRawFileParser'

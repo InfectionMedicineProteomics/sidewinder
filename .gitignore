@@ -1,3 +1,4 @@
+.gitignore
 .snakemake/
 __pycache__/
 pdb_operations.py
@@ -10,3 +11,7 @@ config/entries.csv
 workflow/scripts/testing.ipynb
 .nv/
 config/*_2.*
+bin/thermoRawFileParser
+*.err
+*.out
+run_slurm.sh
