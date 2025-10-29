@@ -10,7 +10,7 @@ Detailed instructions to come.
 
 ## Dependencies
 
-Requires snakemake>=6.0
+Requires snakemake>=6.0, and a working installation of [ThermoRawFileParser](https://github.com/CompOmics/ThermoRawFileParser) (the path to which should be specified in the config file).
 
 ## Use
 

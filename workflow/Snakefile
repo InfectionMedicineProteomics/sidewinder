@@ -92,19 +92,23 @@ BEST_PDB = ['best_model.pdb'] * len(ANTIGEN_LIST)
 
 BEST_TXT = ['best_model_xls.txt'] * len(ANTIGEN_LIST)
 
-docking_files = 'structure_module/docking'
+DOCKING_FILES = 'structure_module/docking'
+
+DATA_FILES = 'data_module/sample_files'
+
+SCORE_FILES = 'scoring_module'
 
 
 rule all:
     input:
         expand(os.path.join(OUTDIR_BASE,
-                             docking_files,
+                             DOCKING_FILES,
                              "{antigen}_+_{antibody}",
                              "{antigen}_+_{antibody}_megadock.done"),
                zip,
                antigen=UNIQUE_ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST),
         expand(os.path.join(OUTDIR_BASE,
-                             docking_files,
+                             DOCKING_FILES,
                              "{antigen}_+_{antibody}",
                              "{antigen}_+_{antibody}.xls"),
                zip,
