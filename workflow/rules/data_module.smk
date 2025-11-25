@@ -21,7 +21,7 @@ rule msconvert:
     conda:
         f'{WD}/envs/thermoRawFileParser_env.yml'
     shell:
-        "[[ $(sed 's/^.*\.//' <(echo {input.ms_file})) == mzML ]]"
+        r"[[ $(sed 's/^.*\.//' <(echo {input.ms_file})) == mzML ]]"
         " &&"
         " ln -s {input.ms_file} {output.mzml}"
         " ||"
@@ -62,27 +62,29 @@ rule spectra_annotation:
         sql = os.path.join(OUTDIR_BASE,
                            SCORE_FILES,
                            "{sample}",
-                           "{antigen}", "{antibody}", "spectra_annotation.sql"),
+                           "{antigen}_+_{antibody_id}",
+                           "spectra_annotation.sql"),
         img_dir = directory(os.path.join(OUTDIR_BASE,
                                          SCORE_FILES,
                                          "{sample}",
-                                         "{antigen}",
-                                         "{antibody}", "top_spectra")),
+                                         "{antigen}_+_{antibody_id}",
+                                         "top_spectra")),
         top_xls = os.path.join(OUTDIR_BASE,
                                SCORE_FILES,
                                "{sample}",
-                               "{antigen}", "{antibody}", "top_xls.txt"),
+                               "{antigen}_+_{antibody_id}", "top_xls.txt"),
         # Move to previous filtering rule to reduce redundancy:
         mgf_filt = os.path.join(OUTDIR_BASE,
                                 DATA_FILES,
-                                "{sample}_{antibody}_{antigen}_filtered.mzML")
+                                (f'{{sample}}_{{antibody_id}}_{{antigen}}'
+                                 f'_filtered.mgf'))
     params:
         ms_script = f'{WD}/scripts/sidewinder-ms_v2.py',
         x_linker = get_linker_num,
         mass_delta_cutoff = 0.01,
         outdir = os.path.join(OUTDIR_BASE,
                               SCORE_FILES,
-                              "{sample}", "{antigen}", "{antibody}")
+                              "{sample}", "{antigen}_+_{antibody_id}")
     conda:
         f'{WD}/envs/pyteomics_env.yml'
     shell:

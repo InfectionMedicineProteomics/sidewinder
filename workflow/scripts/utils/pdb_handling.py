@@ -70,7 +70,7 @@ def seq_from_structure(structure: Structure.Structure) -> str:
 
             seq_list.append(str(pp.get_sequence()))
 
-    return ''.join(seq_list)
+    return '\n'.join(seq_list)
 
 def close_pipes(pipes: List[Popen]) -> None:
     """Closes the standard output streams of a list of Popen process objects.
@@ -129,7 +129,16 @@ def mkdir(context, param, value: Path) -> Path:
     callback=mkdir,
     help='Output directory'
 )
-def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
+@click.option(
+    '--seq_output_dir',
+    required=False,
+    type=click.Path(resolve_path=True, path_type=Path),
+    callback=mkdir,
+    help='Output directory for sequences (defaults to output_dir)'
+)
+def cheetah_pdb_format(pdb1: Path,
+                       pdb2: Path,
+                       output_dir: Path, seq_output_dir: Path = None) -> None:
     """Cleans and formats two PDB files, extracts amino acid sequences, and creates a combined PDB.
 
     This function performs the following steps:
@@ -158,12 +167,9 @@ def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
     """
     chains = ('A', 'B')
 
-    path_in = {chains[0]: pdb1, chains[1]: pdb2}
+    pdbs = {chains[0]: pdb1, chains[1]: pdb2}
 
-    paths_out = {chains[0]: output_dir / f'{pdb1.stem}',
-                 chains[1]: output_dir / f'{pdb2.stem}'}
-
-    for out_chain, pdb in path_in.items():
+    for out_chain, pdb in pdbs.items():
 
         struct = parse_pdb(pdb=pdb, structure_id=out_chain)
 
@@ -172,13 +178,13 @@ def cheetah_pdb_format(pdb1: Path, pdb2: Path, output_dir: Path):
 
         seq = seq_from_structure(structure=struct)
 
-        seq_file = f'{paths_out[out_chain]}.txt'
+        seq_file = f'{seq_output_dir}/{pdb.stem}.txt'
 
         with open(seq_file, 'w') as f:
 
             f.write(f'{seq}\n')
 
-        with open(f'{paths_out[out_chain]}.pdb', 'w') as f:
+        with open(f'{output_dir}/{pdb.stem}.pdb', 'w') as f:
 
             # Open pipe call and specify commands; final pipe stdout is to file.
             p1 = Popen(['pdb_keepcoord', pdb], stdout=PIPE)

@@ -19,8 +19,8 @@ SCHEME = config['cdr_annotation_scheme']
 
 rule pdb_handling:
     input:
-        PDB_a = lambda wildcards: str(config["antibody_dir"])  + '/' + wildcards.antibody + '.pdb',
-        PDB_b = lambda wildcards: str(config["antigen_dir"])  + '/' + wildcards.antigen + '.pdb'
+        PDB_a = lambda wc: str(config["antibody_dir"]) + f'/{wc.antibody}.pdb',
+        PDB_b = lambda wc: str(config["antigen_dir"]) + f'/{wc.antigen}.pdb'
     output:
         pdb_a = os.path.join(OUTDIR_BASE,
                              DOCKING_FILES,
@@ -31,14 +31,17 @@ rule pdb_handling:
     params:
         pdb_handling = f'{WD}/scripts/utils/pdb_handling.py',
         outdir = os.path.join(OUTDIR_BASE,
-                              DOCKING_FILES, "{antigen}_+_{antibody}")
+                              DOCKING_FILES, "{antigen}_+_{antibody}"),
+        seq_outdir = os.path.join(OUTDIR_BASE,
+                                  SUPPORT_FILES)
     conda:
         f'{WD}/envs/biopython_env.yml'
     shell:
         "python3 {params.pdb_handling} "
         "--pdb1 {input.PDB_a} "
         "--pdb2 {input.PDB_b} "
-        "--output_dir {params.outdir}"
+        "--output_dir {params.outdir} "
+        "--seq_output_dir {params.seq_outdir}"
 
 if BLOCK_FV:
     # TODO:
@@ -74,16 +77,22 @@ if BLOCK_FV:
 rule seq2xl:
     # TODO: Should make this run only once per unique antibody-antigen pair.
     input:
-        PDB_a = rules.pdb_handling.input.PDB_a,
-        PDB_b = rules.pdb_handling.input.PDB_b
+        PDB_a = lambda wc: os.path.join(OUTDIR_BASE,
+                                        DOCKING_FILES,
+                                        f'{wc.antigen}_+_{AB_ID_TO_REP[wc.antibody_id]}',
+                                        f'{AB_ID_TO_REP[wc.antibody_id]}.pdb'),
+        PDB_b = lambda wc: os.path.join(OUTDIR_BASE,
+                                        DOCKING_FILES,
+                                        f'{wc.antigen}_+_{AB_ID_TO_REP[wc.antibody_id]}',
+                                        f'{wc.antigen}.pdb')
     output:
         os.path.join(OUTDIR_BASE,
-                     DOCKING_FILES,
-                     "{antigen}_+_{antibody}", "{antigen}_+_{antibody}.xls")
+                     SUPPORT_FILES,
+                     "{antigen}_+_{antibody_id}.xls")
     params:
         seq2xl = f'{WD}/scripts/utils/seq2xl_v1.5.py',
         outdir = os.path.join(OUTDIR_BASE,
-                              DOCKING_FILES, "{antigen}_+_{antibody}")
+                              DOCKING_FILES, "{antigen}_+_{antibody_id}")
     conda:
         f'{WD}/envs/biopython_env.yml'
     shell:
