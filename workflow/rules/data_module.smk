@@ -10,60 +10,83 @@ rule msconvert:
     # TODO:
     #   - Sort proper thermoRawFileParser inclusion
     input:
-        ms2 = os.path.join(config['ms2_files'],
-                           f'{{sample}}{config["ms2_ext"]}')
+        ms_file = os.path.join(config['ms_files'],
+                           f'{{sample}}{config["ms_ext"]}')
     output:
         mzml = os.path.join(OUTDIR_BASE,
-                           sample_files, 'mzML_files', '{sample}.mzML')
+                            DATA_FILES, 'mzML_files', '{sample}.mzML')
     params:
-        outdir = os.path.join(OUTDIR_BASE, sample_files, 'mzML_files'),
+        outdir = os.path.join(OUTDIR_BASE, DATA_FILES, 'mzML_files'),
         thermoRawFileParser = config['thermoRawFileParser']
     conda:
         f'{WD}/envs/thermoRawFileParser_env.yml'
     shell:
-        "[[ $(sed 's/^.*\.//' <(echo {input.ms2})) == mzML ]]"
+        "[[ $(sed 's/^.*\.//' <(echo {input.ms_file})) == mzML ]]"
         " &&"
-        " ln -s {input.ms2} {output.mzml}"
+        " ln -s {input.ms_file} {output.mzml}"
         " ||"
         " {params.thermoRawFileParser}"
-        " -i={input.ms2}"
+        " -i={input.ms_file}"
         " -o={params.outdir}"
         " -f=2"
 
-rule ms2:
+# Need to add this rule to make filtering more efficient, and only filter once
+# per antibody-antigen-sample combination.
+# rule filter_spectra:
+#     input:
+#         mzml = rules.msconvert.output.mzml,
+#         xls = rules.seq2xl.output
+#     output:
+#         filt_mzml = os.path.join(OUTDIR_BASE,
+#                                  DATA_FILES,
+#                                  'filtered_mzML',
+#                                  '{sample}_filtered.mzML')
+#     params:
+#         filter_script = f'{WD}/scripts/filter_mzml.py',
+#         outdir = os.path.join(OUTDIR_BASE,
+#                               DATA_FILES,
+#                               'filtered_mzML')
+#     conda:
+#         f'{WD}/envs/pyteomics_env.yml'
+#     shell:
+#         "python3 {params.filter_script} "
+#         "--mzml_file {input.mzml} "
+#         "--output_file {output.filt_mzml}"
+
+rule spectra_annotation:
     # TODO: Speed up!
     input:
         mzml = rules.msconvert.output.mzml,
         xls = rules.seq2xl.output
     output:
         sql = os.path.join(OUTDIR_BASE,
-                           txms_files,
+                           SCORE_FILES,
                            "{sample}",
-                           "{binder}", "{target}", "ms2_results.sql"),
+                           "{antigen}", "{antibody}", "spectra_annotation.sql"),
         img_dir = directory(os.path.join(OUTDIR_BASE,
-                                         txms_files,
+                                         SCORE_FILES,
                                          "{sample}",
-                                         "{binder}",
-                                         "{target}", "top_spectra")),
+                                         "{antigen}",
+                                         "{antibody}", "top_spectra")),
         top_xls = os.path.join(OUTDIR_BASE,
-                               txms_files,
+                               SCORE_FILES,
                                "{sample}",
-                               "{binder}", "{target}", "top_xls.txt"),
+                               "{antigen}", "{antibody}", "top_xls.txt"),
+        # Move to previous filtering rule to reduce redundancy:
         mgf_filt = os.path.join(OUTDIR_BASE,
-                                txms_files,
-                                "{sample}",
-                                "{binder}",
-                                "{target}", "{sample}_filtered.mzML")
+                                DATA_FILES,
+                                "{sample}_{antibody}_{antigen}_filtered.mzML")
     params:
-        ms2_script = f'{WD}/scripts/sidewinder-ms_v2.py',
+        ms_script = f'{WD}/scripts/sidewinder-ms_v2.py',
         x_linker = get_linker_num,
         mass_delta_cutoff = 0.01,
         outdir = os.path.join(OUTDIR_BASE,
-                              txms_files, "{sample}", "{binder}", "{target}")
+                              SCORE_FILES,
+                              "{sample}", "{antigen}", "{antibody}")
     conda:
         f'{WD}/envs/pyteomics_env.yml'
     shell:
-        "python3 {params.ms2_script} "
+        "python3 {params.ms_script} "
         "--mzml_file {input.mzml} "
         # "--mgf_file {input.mgf} "
         "--xl_file {input.xls} "

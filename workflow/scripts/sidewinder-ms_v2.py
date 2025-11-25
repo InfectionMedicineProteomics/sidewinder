@@ -105,7 +105,7 @@ def taxlink(all_xls_file: Path,
                                                  xlinker_type, ptm_type)
 
     # Build SQLite3 database.
-    sql_db_file = output_dir / 'ms2_results.sql'
+    sql_db_file = output_dir / 'spectra_annotation.sql'
 
     conn = sqlite3.connect(str(sql_db_file))
 

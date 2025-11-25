@@ -56,6 +56,23 @@ def get_linker_num(wildcards):
 
         raise ValueError(f"No linker found for {key} in the input table.")
 
+def get_unique_pairs(df, with_samples=False):
+
+    get_antibody_id = lambda x: '_'.join(x.split('_')[:-1])
+
+    df['antibody_id'] = df['antibody'].apply(get_antibody_id)
+
+    if with_samples:
+
+        unique_pairs = df[['antigen',
+                           'antibody_id', 'sample']].drop_duplicates()
+
+    else:
+
+        unique_pairs = df[['antigen', 'antibody_id']].drop_duplicates()
+
+    return [tuple(p) for p in unique_pairs.values.tolist()]
+
 
 min_version("6.0")  # Min version for using modules.
 
@@ -80,13 +97,20 @@ df = pd.read_csv(table_file)
 
 ANTIGEN_LIST, ANTIBODY_LIST, SAMPLES, LINKERS = df.values.T
 
-# --- ADD THIS CODE ---
 # Create a new dataframe containing only unique antigen-antibody pairs
-unique_pairs_df = df[['antigen', 'antibody']].drop_duplicates()
+unique_pairs_df = df[['antigen', 'antibody', 'sample']].drop_duplicates()
 # Create new lists from this unique dataframe
-UNIQUE_ANTIGEN_LIST = unique_pairs_df['antigen'].to_list()
+ANTIGEN_LIST = unique_pairs_df['antigen'].to_list()
+
 UNIQUE_ANTIBODY_LIST = unique_pairs_df['antibody'].to_list()
-# --- END OF ADDED CODE ---
+
+UNIQUE_PAIRS = get_unique_pairs(unique_pairs_df)
+
+SAMPLE_MAPPING = get_unique_pairs(df, with_samples=True)
+
+#print(UNIQUE_PAIRS)
+
+print(SAMPLE_MAPPING)
 
 BEST_PDB = ['best_model.pdb'] * len(ANTIGEN_LIST)
 
@@ -106,27 +130,21 @@ rule all:
                              "{antigen}_+_{antibody}",
                              "{antigen}_+_{antibody}_megadock.done"),
                zip,
-               antigen=UNIQUE_ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST),
+               antigen=ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST),
         expand(os.path.join(OUTDIR_BASE,
                              DOCKING_FILES,
                              "{antigen}_+_{antibody}",
                              "{antigen}_+_{antibody}.xls"),
                zip,
-               antigen=UNIQUE_ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST)
-        # expand(
-        #     os.path.join(
-        #         OUTDIR_BASE, 'scoring_module',
-        #         "{sample}",
-        #         "{antigen}",
-        #         "{antibody}",
-        #         "{best_pdb}"
-        #      ),
-        #      zip,
-        #      sample=SAMPLES,
-        #      antigen=ANTIGEN_LIST,
-        #      antibody=ANTIBODY_LIST,
-        #      best_pdb=BEST_PDB
-        # ),
+               antigen=ANTIGEN_LIST, antibody=UNIQUE_ANTIBODY_LIST),
+        expand(os.path.join(OUTDIR_BASE,
+                            SCORE_FILES,
+                            "{sample}",
+                            "{antigen}",
+                            "{antibody}",
+                            "spectra_annotation.sql"),
+               zip,
+               sample=SAMPLES, antigen=ANTIGEN_LIST, antibody=ANTIBODY_LIST),
         # expand(
         #     os.path.join(
         #         OUTDIR_BASE, 'scoring_module',

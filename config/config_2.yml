@@ -10,8 +10,8 @@ antibody_dir: '/srv/data1/jo0348st/projects/2025-dt_ply_mAbs/colabfold_results/6
 antigen_dir: '/srv/data1/jo0348st/data/2025-dt_ply_mAbs/pdb/ply'
 
 # Path where all samples are stored. Valid formats: [raw, mzml, mgf]
-ms2_files:  '/srv/data1/jo0348st/data/2025-dt_ply_mAbs/msms/raw'
-ms2_ext: '.raw'
+ms_files:  '/srv/data1/jo0348st/data/2025-dt_ply_mAbs/msms/raw'
+ms_ext: '.raw'
 
 distance_cut_off: 32  # In Ångström
 num_of_top_filters: 10  # Models to keep

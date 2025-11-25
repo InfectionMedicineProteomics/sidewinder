@@ -23,15 +23,15 @@ rule pdb_handling:
         PDB_b = lambda wildcards: str(config["antigen_dir"])  + '/' + wildcards.antigen + '.pdb'
     output:
         pdb_a = os.path.join(OUTDIR_BASE,
-                             docking_files,
+                             DOCKING_FILES,
                              "{antigen}_+_{antibody}", "{antibody}.pdb"),
         pdb_b = os.path.join(OUTDIR_BASE,
-                             docking_files,
+                             DOCKING_FILES,
                              "{antigen}_+_{antibody}", "{antigen}.pdb")
     params:
         pdb_handling = f'{WD}/scripts/utils/pdb_handling.py',
         outdir = os.path.join(OUTDIR_BASE,
-                              docking_files, "{antigen}_+_{antibody}")
+                              DOCKING_FILES, "{antigen}_+_{antibody}")
     conda:
         f'{WD}/envs/biopython_env.yml'
     shell:
@@ -50,18 +50,18 @@ if BLOCK_FV:
             sc_pdb = rules.pdb_handling.output.pdb_a
         output:
             pdb_a = os.path.join(OUTDIR_BASE,
-                                 docking_files,
+                                 DOCKING_FILES,
                                  "{antigen}_+_{antibody}",
-                                 "{antibody}_blocked.pdb")
+                                 "{antibody}_blocked.pdb"),
             json = os.path.join(OUTDIR_BASE,
-                                  docking_files,
+                                  DOCKING_FILES,
                                   "{antigen}_+_{antibody}",
                                   f'{{antibody}}_fv_{SCHEME}.json')
         params:
             fv_blocking = f'{WD}/scripts/mdock-block_pdb.py',
             annotation_scheme = SCHEME,
             outdir = os.path.join(OUTDIR_BASE,
-                                  docking_files, "{antigen}_+_{antibody}")
+                                  DOCKING_FILES, "{antigen}_+_{antibody}")
         conda:
             f'{WD}/envs/biopython_env.yml'
         shell:
@@ -72,17 +72,18 @@ if BLOCK_FV:
             "--output_dir {params.outdir}"
 
 rule seq2xl:
+    # TODO: Should make this run only once per unique antibody-antigen pair.
     input:
         PDB_a = rules.pdb_handling.input.PDB_a,
         PDB_b = rules.pdb_handling.input.PDB_b
     output:
         os.path.join(OUTDIR_BASE,
-                     docking_files,
+                     DOCKING_FILES,
                      "{antigen}_+_{antibody}", "{antigen}_+_{antibody}.xls")
     params:
         seq2xl = f'{WD}/scripts/utils/seq2xl_v1.5.py',
         outdir = os.path.join(OUTDIR_BASE,
-                              docking_files, "{antigen}_+_{antibody}")
+                              DOCKING_FILES, "{antigen}_+_{antibody}")
     conda:
         f'{WD}/envs/biopython_env.yml'
     shell:
@@ -98,7 +99,7 @@ rule megadock_docking:
         pdb_b = rules.pdb_handling.output.pdb_b
     output:
         os.path.join(OUTDIR_BASE,
-                     docking_files,
+                     DOCKING_FILES,
                      "{antigen}_+_{antibody}",
                      "{antigen}_+_{antibody}_megadock.out")
     params:
@@ -106,7 +107,7 @@ rule megadock_docking:
         # megadock = '/opt/MEGADOCK/megadock',  # CPU
         predictions = config['docking_samples'],
         outdir = os.path.join(OUTDIR_BASE,
-                              docking_files, "{antigen}_+_{antibody}")
+                              DOCKING_FILES, "{antigen}_+_{antibody}")
     singularity:
         f'{WD}/envs/megadock_4.1.4-gpu.sif'  # GPU
         # f'{WD}/envs/megadock_4.1.4-cpu.sif'  # CPU
@@ -116,7 +117,7 @@ rule megadock_docking:
         nvidia_gpu=1
     log:
         logfile = os.path.join(OUTDIR_BASE,
-                               docking_files,
+                               DOCKING_FILES,
                                '{antigen}_+_{antibody}',
                                '{antigen}_+_{antibody}_megadock.log')
     shell:
@@ -135,7 +136,7 @@ rule megadock_ensemble_generation:
         rules.megadock_docking.output
     output:
         os.path.join(OUTDIR_BASE,
-                     docking_files,
+                     DOCKING_FILES,
                      "{antigen}_+_{antibody}",
                      "{antigen}_+_{antibody}_megadock.done")
     params:
@@ -144,7 +145,7 @@ rule megadock_ensemble_generation:
         ligand = rules.pdb_handling.output.pdb_b,  # Antigen.
         decoys = config['model_samples'],
         outdir = os.path.join(OUTDIR_BASE,
-                              docking_files, "{antigen}_+_{antibody}"),
+                              DOCKING_FILES, "{antigen}_+_{antibody}"),
         ensemble_prefix = "ensemble/{antigen}_+_{antibody}",
     shell:
         "mkdir -p {params.outdir}/ensemble "
