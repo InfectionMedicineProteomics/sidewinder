@@ -1,7 +1,7 @@
 ## USER configurable options:
 
 # Default output_dir: 'results/{date}'
-output_dir: '/srv/data1/jo0348st/projects/2025-dt_ply_mAbs/sidewinder_results/2511_testing'
+output_dir: '/srv/data1/jo0348st/projects/2025-dt_ply_mAbs/sidewinder_results/2601_testing'
 
 # Target dir:
 antibody_dir: '/srv/data1/jo0348st/projects/2025-dt_ply_mAbs/colabfold_results/6E5/relaxed'

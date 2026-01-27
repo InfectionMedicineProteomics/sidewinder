@@ -285,7 +285,7 @@ class fv_indexing:
               help='Path to output directory')
 def block_fv_pdb(multi_chain_pdb: Path,
                  single_chain_pdb: Path,
-                 annotation_scheme: string, output_dir: Path):
+                 annotation_scheme: str, output_dir: Path):
     """Blocks residues in a single-chain Fv PDB file for MegaDock, focusing on CDRs.
 
     This function prepares a PDB file for MegaDock by blocking specific residues

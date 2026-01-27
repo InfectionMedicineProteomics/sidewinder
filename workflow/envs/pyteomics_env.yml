@@ -8,3 +8,4 @@ dependencies:
   - scipy
   - click
   - pandas
+  - pynumpress

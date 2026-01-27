@@ -91,15 +91,13 @@ rule seq2xl:
                      "{antigen}_+_{antibody_id}.xls")
     params:
         seq2xl = f'{WD}/scripts/utils/seq2xl_v1.5.py',
-        outdir = os.path.join(OUTDIR_BASE,
-                              DOCKING_FILES, "{antigen}_+_{antibody_id}")
     conda:
         f'{WD}/envs/biopython_env.yml'
     shell:
         "python3 {params.seq2xl} "
         "--pdb_file1 {input.PDB_a} "
         "--pdb_file2 {input.PDB_b} "
-        "--output_dir {params.outdir}"
+        "--output_file {output}"
 
 rule megadock_docking:
     input:

@@ -256,9 +256,9 @@ def rec_to_xls(rec_list: List[SeqIO.SeqRecord],
 @click.option('--pdb_file2',
               required=True,
               type=click.Path(exists=True, path_type=Path), help='')
-@click.option('--output_dir',
+@click.option('--output_file',
               required=True,
-              type=click.Path(exists=True, path_type=Path), help='')
+              type=click.Path(exists=False, path_type=Path), help='')
 @click.option('--validation_fasta',
               required=False,
               type=click.Path(exists=True, path_type=Path),
@@ -272,7 +272,7 @@ def rec_to_xls(rec_list: List[SeqIO.SeqRecord],
               default=4, help='Ignore [tryptic] peptides shorter than this.')
 def seq2xl(pdb_file1: Path,
            pdb_file2: Path,
-           output_dir: Path,
+           output_file: Path,
            max_peptide_length: int, validation_fasta: Path):
     """Generates possible inter-XL interactions between two PDB files.
 
@@ -297,6 +297,10 @@ def seq2xl(pdb_file1: Path,
            FileNotFoundError: If input PDB files cannot be found.
            IOError: If output file cannot be written.
    """
+    if not output_file.parent.exists():
+
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
     pep_len = max_peptide_length
 
     kojak_xls = []
@@ -312,7 +316,7 @@ def seq2xl(pdb_file1: Path,
     xls_2 = rec_to_xls(rec_2, max_peptide_length=pep_len)
 
     # All XLs output file.
-    xl_file = output_dir / f'{pdb_file2.stem}_+_{pdb_file1.stem}.xls'
+    xl_file = output_file
 
     # Validate the XLs assigned to xls_2 based on XLs generated for a
     # superset structure of the protein. Useful if not the entire protein
